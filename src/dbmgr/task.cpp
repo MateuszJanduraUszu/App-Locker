@@ -1,0 +1,205 @@
+// task.cpp
+
+// Copyright (c) Mateusz Jandura. All rights reserved.
+// SPDX-License-Identifier: Apache-2.0
+
+#include <dbmgr/task.hpp>
+#include <dbmgr/database.hpp>
+#include <cstdio>
+
+namespace dbmgr {
+    help::help() noexcept {}
+
+    help::~help() noexcept {}
+
+    bool help::execute() noexcept {
+        ::puts(
+            "Usage:\n"
+            "    --lock=name - Locks an application.\n"
+            "    --unlock=name - Unlocks an application.\n"
+            "    --unlock-all - Unlocks all locked applications.\n"
+            "    --status=name - Checks if application is locked."
+        );
+        return true;
+    }
+
+    const char* help::error() const noexcept {
+        return nullptr; // error never occurs
+    }
+
+    lock::lock(const wstring_view _Target) noexcept : _Mytarget(_Target), _Myerror(nullptr) {}
+
+    lock::~lock() noexcept {}
+
+    bool lock::execute() noexcept {
+        database& _Db = database::current();
+        if (_Db.has_entry(_Mytarget)) {
+            _Myerror = "Application already locked.";
+            return false;
+        }
+
+        if (_Db.append(_Mytarget)) {
+            return true;
+        } else {
+            _Myerror = "Failed to lock the application, try again.";
+            return false;
+        }
+    }
+
+    const char* lock::error() const noexcept {
+        return _Myerror;
+    }
+
+    unlock::unlock(const wstring_view _Target) noexcept : _Mytarget(_Target), _Myerror(nullptr) {}
+
+    unlock::~unlock() noexcept {}
+
+    bool unlock::execute() noexcept {
+        database& _Db = database::current();
+        if (!_Db.has_entry(_Mytarget)) {
+            _Myerror = "Application is not locked.";
+            return false;
+        }
+
+        if (_Db.erase(_Mytarget)) {
+            return true;
+        } else {
+            _Myerror = "Failed to unlock the application, try again.";
+            return false;
+        }
+    }
+
+    const char* unlock::error() const noexcept {
+        return _Myerror;
+    }
+
+    unlock_all::unlock_all() noexcept {}
+
+    unlock_all::~unlock_all() noexcept {}
+
+    bool unlock_all::execute() noexcept {
+        database& _Db = database::current();
+        _Db.clear();
+        return true;
+    }
+
+    const char* unlock_all::error() const noexcept {
+        return nullptr; // error never occurs
+    }
+
+    status::status(const wstring_view _Target) noexcept : _Mytarget(_Target) {}
+
+    status::~status() noexcept {}
+
+    bool status::execute() noexcept {
+        database& _Db = database::current();
+        if (_Db.has_entry(_Mytarget)) {
+            ::puts("[STATUS]: Application is locked.");
+        } else {
+            ::puts("[STATUS]: Application is not locked.");
+        }
+
+        return true;
+    }
+
+    const char* status::error() const noexcept {
+        return nullptr; // error never occurs
+    }
+
+    [[nodiscard]] task* make_task(const wchar_t* const _Arg) noexcept {
+        const wstring_view _As_view(_Arg);
+        const size_t _Eq_pos = _As_view.find(L'=');
+        if (_Eq_pos != wstring_view::npos) { // command with target
+            if (_Eq_pos == _As_view.size() - 1) { // no target provided
+                return nullptr;
+            }
+
+            const wstring_view _Target = _As_view.substr(_Eq_pos + 1);
+            if (_As_view.contains(L"--lock")) {
+                return new lock(_Target);
+            } else if (_As_view.contains(L"--unlock")) {
+                return new unlock(_Target);
+            } else if (_As_view.contains(L"--status")) {
+                return new status(_Target);
+            } else { // unknown command
+                return nullptr;
+            }
+        } else { // generic command
+            if (_As_view == L"--help") {
+                return new help();
+            } else if (_As_view == L"--unlock-all") {
+                return new unlock_all();
+            } else { // unknown command
+                return nullptr;
+            }
+        }
+    }
+
+    task_invoker::task_invoker() noexcept : _Mytask(nullptr) {}
+
+    task_invoker::~task_invoker() noexcept {
+        _Release_task();
+    }
+
+    void task_invoker::_Release_task() noexcept {
+        if (_Mytask) {
+            delete _Mytask;
+            _Mytask = nullptr;
+        }
+    }
+
+    void task_invoker::acquire_task(task* const _Task) noexcept {
+        _Release_task();
+        _Mytask = _Task;
+    }
+
+    bool task_invoker::execute() noexcept {
+        return _Mytask ? _Mytask->execute() : false;
+    }
+
+    const char* task_invoker::error() const noexcept {
+        return _Mytask ? _Mytask->error() : nullptr;
+    }
+
+    task_queue::task_queue() noexcept : _Mytasks(), _Myerror(nullptr) {}
+
+    task_queue::~task_queue() noexcept {
+        _Clear();
+    }
+
+    void task_queue::_Clear() noexcept {
+        for (task*& _Task : _Mytasks) {
+            delete _Task;
+            _Task = nullptr;
+        }
+
+        _Mytasks.clear();
+    }
+
+    [[nodiscard]] task* task_queue::_Pop() noexcept {
+        task* const _Result = _Mytasks.front();
+        _Mytasks.erase(_Mytasks.begin());
+        return _Result;
+    }
+
+    void task_queue::push(task* const _Task) noexcept {
+        _Mytasks.push_back(_Task);
+    }
+
+    bool task_queue::execute() noexcept {
+        task_invoker _Invoker;
+        while (!_Mytasks.empty()) {
+            _Invoker.acquire_task(_Pop());
+            if (!_Invoker.execute()) {
+                _Myerror = _Invoker.error();
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    const char* task_queue::error() const noexcept {
+        return _Myerror;
+    }
+} // namespace dbmgr
