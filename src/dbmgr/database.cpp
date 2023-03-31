@@ -57,6 +57,36 @@ namespace dbmgr {
 #endif // _M_X64
     }
 
+    _Database_file::_Database_file() noexcept
+        : _Myhandle(_Open_file(database_location::current().file())) {}
+
+    _Database_file::~_Database_file() noexcept {
+        if (_Myhandle) {
+            ::CloseHandle(_Myhandle);
+            _Myhandle = nullptr;
+        }
+    }
+
+    bool _Database_file::_Good() const noexcept {
+        return _Myhandle != nullptr;
+    }
+
+    void _Database_file::_Clear() noexcept {
+        _Clear_file(_Myhandle);
+    }
+
+    size_t _Database_file::_Size() noexcept {
+        return _File_size(_Myhandle);
+    }
+
+    void _Database_file::_Read(unsigned char* const _Buf, const size_t _Buf_size) noexcept {
+        _Read_file(_Myhandle, _Buf, _Buf_size);
+    }
+
+    void _Database_file::_Write(const unsigned char* const _Str, const size_t _Size) noexcept {
+        _Write_file(_Myhandle, _Str, _Size);
+    }
+
     database_location::database_location()
         : _Mydir(_Get_database_directory_path()), _Myfile(_Get_database_file_path()) {}
 
@@ -75,21 +105,13 @@ namespace dbmgr {
         return _Myfile;
     }
 
-    database::database() noexcept : _Myfile(_Open_file(
-        database_location::current().file())), _Myentries(), _Mysave(false) {
-        if (_Myfile) {
-            _Load_entries();
-        }
+    database::database() noexcept : _Myentries(), _Mysave(false) {
+        _Load_database();
     }
 
     database::~database() noexcept {
-        if (_Myfile) {
-            if (_Mysave) {
-                _Save();
-            }
-
-            ::CloseHandle(_Myfile);
-            _Myfile = nullptr;
+        if (_Mysave) {
+            _Save();
         }
     }
 
@@ -109,16 +131,19 @@ namespace dbmgr {
         }
     }
 
-    void database::_Load_entries() noexcept {
-        const size_t _Size = _File_size(_Myfile);
-        if (_Size <= 1024) {
-            unsigned char _Buf[1024];
-            _Read_file(_Myfile, _Buf, _Size);
-            _Extract_entries_from_bytes(_Buf, _Size);
-        } else {
-            unique_ptr<unsigned char[]> _Buf(new unsigned char[_Size]);
-            _Read_file(_Myfile, _Buf.get(), _Size);
-            _Extract_entries_from_bytes(_Buf.get(), _Size);
+    void database::_Load_database() noexcept {
+        _Database_file _File;
+        if (_File._Good()) {
+            const size_t _Size = _File._Size();
+            if (_Size <= 1024) { // use stack-based buffer
+                unsigned char _Buf[1024];
+                _File._Read(_Buf, _Size);
+                _Extract_entries_from_bytes(_Buf, _Size);
+            } else { // use heap-based buffer
+                unique_ptr<unsigned char[]> _Buf(new unsigned char[_Size]);
+                _File._Read(_Buf.get(), _Size);
+                _Extract_entries_from_bytes(_Buf.get(), _Size);
+            }
         }
     }
 
@@ -138,9 +163,12 @@ namespace dbmgr {
     }
 
     void database::_Save() noexcept {
-        _Clear_file(_Myfile);
-        for (const entry_type& _Entry : _Myentries) {
-            _Write_file(_Myfile, _Entry.data(), _Entry.size());
+        _Database_file _File;
+        if (_File._Good()) {
+            _File._Clear();
+            for (const entry_type& _Entry : _Myentries) {
+                _File._Write(_Entry.data(), _Entry.size());
+            }
         }
     }
 
@@ -191,10 +219,9 @@ namespace dbmgr {
         }
     }
 
-    void database::refresh() noexcept {
+    void database::reload() noexcept {
         _Myentries.clear();
         _Mysave = false; // reset changes
-        ::SetFilePointer(_Myfile, 0, nullptr, FILE_BEGIN);
-        _Load_entries();
+        _Load_database();
     }
 } // namespace dbmgr
