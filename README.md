@@ -35,7 +35,7 @@ How it works?
 
 The App Locker application consists of two components - the App Locker Database
 Manager (ALDM) and the App Locker Service (ALS). The ALDM maintains the list of locked
-applications, while the ALS searches for and terminates any locked applicatio processes.
+applications, while the ALS searches for and terminates any locked application processes.
 Note that the ALS uses a directory watcher to receive updates on the list of locked
 applications, making it safe to use the ALDM while the ALS is running.
 
