@@ -10,13 +10,18 @@
 #include <string_view>
 
 namespace dbmgr {
-    using ::std::wstring_view;
+    struct _Crc32c_traits {
+        // checks if SSE4.2 SIMD extension can be used
+        static bool _Use_sse42() noexcept;
+    
+        // computes CRC-32C checksum with SSE4.2 SIMD extension support
+        static uint32_t _Compute_sse42(const void* _First, const void* const _Last) noexcept;
+    
+        // computes CRC-32C checksum without SSE4.2 SIMD extension support
+        static uint32_t _Compute_normal(const void* _First, const void* const _Last) noexcept;
+    };
 
-    extern bool _Is_sse42_present() noexcept;
-    extern uint32_t _Compute_crc32c_simd(const void* _First, const void* const _Last) noexcept;
-    extern uint32_t _Compute_crc32c_non_simd(const void* _First, const void* const _Last) noexcept;
-
-    uint32_t compute_checksum(const wstring_view _Str) noexcept;
+    uint32_t compute_checksum(const ::std::wstring_view _Str) noexcept;
 } // namespace dbmgr
 
 #endif // _DBMGR_CHECKSUM_HPP_

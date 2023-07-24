@@ -8,11 +8,11 @@
 #include <nmmintrin.h>
 
 namespace dbmgr {
-    bool _Is_sse42_present() noexcept {
+    bool _Crc32c_traits::_Use_sse42() noexcept {
         return ::IsProcessorFeaturePresent(PF_SSE4_2_INSTRUCTIONS_AVAILABLE) != 0;
     }
 
-    uint32_t _Compute_crc32c_simd(const void* _First, const void* const _Last) noexcept {
+    uint32_t _Crc32c_traits::_Compute_sse42(const void* _First, const void* const _Last) noexcept {
         const unsigned char* _Bytes_first      = static_cast<const unsigned char*>(_First);
         const unsigned char* const _Bytes_last = static_cast<const unsigned char*>(_Last);
         uint32_t _Result                       = 0xFFFF'FFFF;
@@ -24,7 +24,7 @@ namespace dbmgr {
         return _Result ^ 0xFFFF'FFFF;
     }
 
-    uint32_t _Compute_crc32c_non_simd(const void* _First, const void* const _Last) noexcept {
+    uint32_t _Crc32c_traits::_Compute_normal(const void* _First, const void* const _Last) noexcept {
         const unsigned char* _Bytes_first      = static_cast<const unsigned char*>(_First);
         const unsigned char* const _Bytes_last = static_cast<const unsigned char*>(_Last);
         uint32_t _Result                       = 0xFFFF'FFFF;
@@ -81,11 +81,11 @@ namespace dbmgr {
         return _Result ^ 0xFFFF'FFFF;
     }
 
-    uint32_t compute_checksum(const wstring_view _Str) noexcept {
-        if (_Is_sse42_present()) {
-            return _Compute_crc32c_simd(_Str.data(), _Str.data() + _Str.size());
+    uint32_t compute_checksum(const ::std::wstring_view _Str) noexcept {
+        if (_Crc32c_traits::_Use_sse42()) {
+            return _Crc32c_traits::_Compute_sse42(_Str.data(), _Str.data() + _Str.size());
         } else {
-            return _Compute_crc32c_non_simd(_Str.data(), _Str.data() + _Str.size());
+            return _Crc32c_traits::_Compute_normal(_Str.data(), _Str.data() + _Str.size());
         }
     }
 } // namespace dbmgr
