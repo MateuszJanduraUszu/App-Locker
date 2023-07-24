@@ -8,8 +8,6 @@
 #define _APPLOCKER_WAITABLE_EVENT_HPP_
 
 namespace applocker {
-    extern void* _Create_waitable_event() noexcept;
-
     class waitable_event { // waiting-based event
     public:
         using native_handle_type = void*;
@@ -20,13 +18,25 @@ namespace applocker {
         waitable_event(const waitable_event&) = delete;
         waitable_event& operator=(const waitable_event&) = delete;
 
+        // checks if the event is ready to use
         bool good() const noexcept;
+
+        // returns a handle to the native implementation
         const native_handle_type native_handle() const noexcept;
+        
+        // waits for the event notification
         void wait() noexcept;
+        
+        // notifies the event
         void notify() noexcept;
+        
+        // resets the event
         void reset() noexcept;
 
     private:
+        // creates a new event
+        static void* _Create() noexcept;
+
         void* _Myimpl;
     };
 } // namespace applocker

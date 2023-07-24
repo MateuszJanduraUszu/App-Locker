@@ -7,16 +7,17 @@
 #include <Windows.h>
 
 namespace applocker {
-    void* _Create_waitable_event() noexcept {
-        return ::CreateEventW(nullptr, true, false, nullptr);
-    }
-
-    waitable_event::waitable_event() noexcept : _Myimpl(_Create_waitable_event()) {}
+    waitable_event::waitable_event() noexcept : _Myimpl(_Create()) {}
 
     waitable_event::~waitable_event() noexcept {
         if (_Myimpl) {
             ::CloseHandle(_Myimpl);
+            _Myimpl = nullptr;
         }
+    }
+
+    void* waitable_event::_Create() noexcept {
+        return ::CreateEventW(nullptr, true, false, nullptr);
     }
 
     bool waitable_event::good() const noexcept {
