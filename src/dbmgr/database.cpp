@@ -5,60 +5,61 @@
 
 #include <dbmgr/database.hpp>
 #include <cstring>
-#include <type_traits>
+#include <memory>
 #include <Windows.h>
 
 namespace dbmgr {
-    path _Get_database_directory_path() {
-        wchar_t _Buf[1024];
-        const size_t _Buf_size = static_cast<size_t>(::GetModuleFileNameW(nullptr, _Buf, 1024));
-        _Buf[_Buf_size]        = L'\0';
-        return path{wstring_view{_Buf, _Buf_size}}.remove_filename();
+    [[nodiscard]] _File_traits::_Handle_type _File_traits::_Open(const path& _Target) {
+        return ::CreateFileW(_Target.c_str(), GENERIC_READ | GENERIC_WRITE, 0,
+            nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
     }
 
-    path _Get_database_file_path() {
-        wchar_t _Buf[1024];
-        const size_t _Buf_size = static_cast<size_t>(::GetModuleFileNameW(nullptr, _Buf, 1024));
-        _Buf[_Buf_size]        = L'\0';
-        return path{wstring_view{_Buf, _Buf_size}}.remove_filename() / LR"(apps.db)";
+    bool _File_traits::_Clear(const _Handle_type _Handle) noexcept {
+        return ::SetFilePointer(_Handle, 0, nullptr, FILE_BEGIN) != INVALID_SET_FILE_POINTER
+            && ::SetEndOfFile(_Handle) != 0;
     }
 
-    [[nodiscard]] void* _Open_file(const path& _Target) {
-        return ::CreateFileW(_Target.c_str(), GENERIC_READ | GENERIC_WRITE,
-            0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-    }
-
-    size_t _File_size(void* const _Handle) noexcept {
-        LARGE_INTEGER _Large;
-        ::GetFileSizeEx(_Handle, ::std::addressof(_Large));
-        return static_cast<size_t>(_Large.QuadPart);
-    }
-
-    void _Clear_file(void* const _Handle) noexcept {
-        ::SetFilePointer(_Handle, 0, nullptr, FILE_BEGIN);
-        ::SetEndOfFile(_Handle);
-    }
-
-    void _Read_file(
-        void* const _Handle, unsigned char* const _Buf, const size_t _Buf_size) noexcept {
+    size_t _File_traits::_Size(const _Handle_type _Handle) noexcept {
 #ifdef _M_X64
-        (void) ::ReadFile(_Handle, _Buf, static_cast<uint32_t>(_Buf_size), nullptr, nullptr);
+        unsigned long _High = 0; // higher 32 bits
+        return static_cast<size_t>(::GetFileSize(_Handle, &_High) | (_High << 32));
 #else // ^^^ _M_X64 ^^^ / vvv _M_IX86 vvv
-        (void) ::ReadFile(_Handle, _Buf, _Buf_size, nullptr, nullptr);
+        return static_cast<size_t>(::GetFileSize(_Handle, nullptr));
 #endif // _M_X64
     }
 
-    void _Write_file(
-        void* const _Handle, const unsigned char* const _Str, const size_t _Size) noexcept {
+    size_t _File_traits::_Read(
+        const _Handle_type _Handle, unsigned char* const _Buf, const size_t _Size) noexcept {
+        if (_Size == 0 || !_Buf) {
+            return 0;
+        }
+
+        unsigned long _Read = 0;
 #ifdef _M_X64
-        ::WriteFile(_Handle, _Str, static_cast<uint32_t>(_Size), nullptr, nullptr);
+        return ::ReadFile(_Handle, _Buf, static_cast<unsigned long>(_Size), &_Read, nullptr) != 0
+            ? static_cast<size_t>(_Read) : 0;
 #else // ^^^ _M_X64 ^^^ / vvv _M_IX86 vvv
-        ::WriteFile(_Handle, _Str, _Size, nullptr, nullptr);
+        return ::ReadFile(_Handle, _Buf, _Size, &_Read, nullptr) != 0 ? _Read : 0;
+#endif // _M_X64
+    }
+
+    bool _File_traits::_Write(
+        const _Handle_type _Handle, const unsigned char* const _Data, const size_t _Size) noexcept {
+        if (_Size == 0) {
+            return true;
+        }
+
+        unsigned long _Written     = 0;
+#ifdef _M_X64
+        const unsigned long _USize = static_cast<unsigned long>(_Size);
+        return ::WriteFile(_Handle, _Data, _Size, &_Written, nullptr) != 0 && _Written == _USize;
+#else // ^^^ _M_X64 ^^^ / vvv _M_IX86 vvv
+        return ::WriteFile(_Handle, _Data, _Size, &_Written, nullptr) != 0 && _Written == _Size;
 #endif // _M_X64
     }
 
     _Database_file::_Database_file() noexcept
-        : _Myhandle(_Open_file(database_location::current().file())) {}
+        : _Myhandle(_File_traits::_Open(database_location::current().file())) {}
 
     _Database_file::~_Database_file() noexcept {
         if (_Myhandle) {
@@ -71,26 +72,34 @@ namespace dbmgr {
         return _Myhandle != nullptr;
     }
 
-    void _Database_file::_Clear() noexcept {
-        _Clear_file(_Myhandle);
+    bool _Database_file::_Clear() noexcept {
+        return _File_traits::_Clear(_Myhandle);
     }
 
     size_t _Database_file::_Size() noexcept {
-        return _File_size(_Myhandle);
+        return _File_traits::_Size(_Myhandle);
     }
 
-    void _Database_file::_Read(unsigned char* const _Buf, const size_t _Buf_size) noexcept {
-        _Read_file(_Myhandle, _Buf, _Buf_size);
+    size_t _Database_file::_Read(unsigned char* const _Buf, const size_t _Size) noexcept {
+        return _File_traits::_Read(_Myhandle, _Buf, _Size);
     }
 
-    void _Database_file::_Write(const unsigned char* const _Str, const size_t _Size) noexcept {
-        _Write_file(_Myhandle, _Str, _Size);
+    bool _Database_file::_Write(const unsigned char* const _Data, const size_t _Size) noexcept {
+        return _File_traits::_Write(_Myhandle, _Data, _Size);
     }
 
     database_location::database_location()
-        : _Mydir(_Get_database_directory_path()), _Myfile(_Get_database_file_path()) {}
+        : _Mydir(_Get_directory_path()), _Myfile(_Mydir / L"apps.db") {}
 
     database_location::~database_location() noexcept {}
+
+    path database_location::_Get_directory_path() {
+        static constexpr unsigned long _Buf_size = 1024;
+        wchar_t _Buf[_Buf_size]                  = {L'\0'};
+        const size_t _Read                       = static_cast<size_t>(
+            ::GetModuleFileNameW(nullptr, _Buf, _Buf_size));
+        return path{_Buf, _Buf + _Read}.remove_filename();
+    }
 
     database_location& database_location::current() noexcept {
         static database_location _Location;
@@ -115,7 +124,7 @@ namespace dbmgr {
         }
     }
 
-    database::entry_type database::_Make_entry(const wstring_view _Name) noexcept {
+    database::entry_type database::_Make_entry(const ::std::wstring_view _Name) noexcept {
         const uint32_t _Checksum = ::dbmgr::compute_checksum(_Name);
         entry_type _Result;
         ::memcpy(_Result.data(), &_Checksum, sizeof(uint32_t));
@@ -137,12 +146,14 @@ namespace dbmgr {
             const size_t _Size = _File._Size();
             if (_Size <= 1024) { // use stack-based buffer
                 unsigned char _Buf[1024];
-                _File._Read(_Buf, _Size);
-                _Extract_entries_from_bytes(_Buf, _Size);
+                if (_File._Read(_Buf, _Size) == _Size) {
+                    _Extract_entries_from_bytes(_Buf, _Size);
+                }
             } else { // use heap-based buffer
-                unique_ptr<unsigned char[]> _Buf(new unsigned char[_Size]);
-                _File._Read(_Buf.get(), _Size);
-                _Extract_entries_from_bytes(_Buf.get(), _Size);
+                ::std::unique_ptr<unsigned char[]> _Buf(new unsigned char[_Size]);
+                if (_File._Read(_Buf.get(), _Size) == _Size) {
+                    _Extract_entries_from_bytes(_Buf.get(), _Size);
+                }
             }
         }
     }
@@ -151,7 +162,7 @@ namespace dbmgr {
         const unsigned char* const _Bytes, size_t _Count) noexcept {
         static constexpr size_t _Bytes_per_entry = 4;
         const size_t _Remainder                  = _Count % _Bytes_per_entry;
-        if (_Remainder != 0) {
+        if (_Remainder != 0) { // skip incomplete entries
             _Count -= _Remainder;
         }
 
@@ -165,9 +176,12 @@ namespace dbmgr {
     void database::_Save() noexcept {
         _Database_file _File;
         if (_File._Good()) {
-            _File._Clear();
-            for (const entry_type& _Entry : _Myentries) {
-                _File._Write(_Entry.data(), _Entry.size());
+            if (_File._Clear()) { // file must be empty
+                for (const entry_type& _Entry : _Myentries) {
+                    if (!_File._Write(_Entry.data(), _Entry.size())) { // something went wrong, break
+                        break;
+                    }
+                }
             }
         }
     }
@@ -181,12 +195,11 @@ namespace dbmgr {
         return _Myentries.size();
     }
 
-    bool database::has_entry(const wstring_view _Name) const noexcept {
-        return ::std::find(
-            _Myentries.begin(), _Myentries.end(), _Make_entry(_Name)) != _Myentries.end();
+    bool database::has_entry(const ::std::wstring_view _Name) const noexcept {
+        return ::std::find(_Myentries.begin(), _Myentries.end(), _Make_entry(_Name)) != _Myentries.end();
     }
 
-    const vector<database::entry_type>& database::get_entries() const noexcept {
+    const ::std::vector<database::entry_type>& database::get_entries() const noexcept {
         return _Myentries;
     }
 
@@ -197,7 +210,7 @@ namespace dbmgr {
         }
     }
 
-    [[nodiscard]] bool database::append(const wstring_view _Name) {
+    [[nodiscard]] bool database::append(const ::std::wstring_view _Name) {
         const entry_type& _Entry = _Make_entry(_Name);
         if (_Find_entry(_Entry) == _Npos) {
             _Myentries.push_back(_Entry);
@@ -208,7 +221,7 @@ namespace dbmgr {
         }
     }
 
-    [[nodiscard]] bool database::erase(const wstring_view _Name) noexcept {
+    [[nodiscard]] bool database::erase(const ::std::wstring_view _Name) noexcept {
         const size_t _Off = _Find_entry(_Make_entry(_Name));
         if (_Off != _Npos) {
             _Myentries.erase(_Myentries.begin() + _Off);
