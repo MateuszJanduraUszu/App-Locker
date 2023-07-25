@@ -18,7 +18,7 @@ namespace dbmgr {
             "    --lock=name - Locks an application.\n"
             "    --unlock=name - Unlocks an application.\n"
             "    --unlock-all - Unlocks all locked applications.\n"
-            "    --status=name - Checks if application is locked."
+            "    --status=name - Checks if an application is locked."
         );
         return true;
     }
@@ -27,14 +27,14 @@ namespace dbmgr {
         return nullptr; // error never occurs
     }
 
-    lock::lock(const wstring_view _Target) noexcept : _Mytarget(_Target), _Myerror(nullptr) {}
+    lock::lock(const ::std::wstring_view _Target) noexcept : _Mytarget(_Target), _Myerror(nullptr) {}
 
     lock::~lock() noexcept {}
 
     bool lock::execute() noexcept {
         database& _Db = database::current();
         if (_Db.has_entry(_Mytarget)) {
-            _Myerror = "Application already locked.";
+            _Myerror = "The application is already locked.";
             return false;
         }
 
@@ -50,14 +50,14 @@ namespace dbmgr {
         return _Myerror;
     }
 
-    unlock::unlock(const wstring_view _Target) noexcept : _Mytarget(_Target), _Myerror(nullptr) {}
+    unlock::unlock(const ::std::wstring_view _Target) noexcept : _Mytarget(_Target), _Myerror(nullptr) {}
 
     unlock::~unlock() noexcept {}
 
     bool unlock::execute() noexcept {
         database& _Db = database::current();
         if (!_Db.has_entry(_Mytarget)) {
-            _Myerror = "Application is not locked.";
+            _Myerror = "The application is not locked.";
             return false;
         }
 
@@ -94,9 +94,9 @@ namespace dbmgr {
     bool status::execute() noexcept {
         database& _Db = database::current();
         if (_Db.has_entry(_Mytarget)) {
-            ::puts("[STATUS]: Application is locked.");
+            ::puts("[STATUS]: The application is locked.");
         } else {
-            ::puts("[STATUS]: Application is not locked.");
+            ::puts("[STATUS]: The application is not locked.");
         }
 
         return true;
@@ -107,14 +107,14 @@ namespace dbmgr {
     }
 
     [[nodiscard]] task* make_task(const wchar_t* const _Arg) noexcept {
-        const wstring_view _As_view(_Arg);
+        const ::std::wstring_view _As_view(_Arg);
         const size_t _Eq_pos = _As_view.find(L'=');
-        if (_Eq_pos != wstring_view::npos) { // command with target
+        if (_Eq_pos != ::std::wstring_view::npos) { // command with target
             if (_Eq_pos == _As_view.size() - 1) { // no target provided
                 return nullptr;
             }
 
-            const wstring_view _Target = _As_view.substr(_Eq_pos + 1);
+            const ::std::wstring_view _Target = _As_view.substr(_Eq_pos + 1);
             if (_As_view.contains(L"--lock")) {
                 return new lock(_Target);
             } else if (_As_view.contains(L"--unlock")) {
@@ -148,7 +148,7 @@ namespace dbmgr {
         }
     }
 
-    void task_invoker::acquire_task(task* const _Task) noexcept {
+    void task_invoker::bind_task(task* const _Task) noexcept {
         _Release_task();
         _Mytask = _Task;
     }
@@ -189,7 +189,7 @@ namespace dbmgr {
     bool task_queue::execute() noexcept {
         task_invoker _Invoker;
         while (!_Mytasks.empty()) {
-            _Invoker.acquire_task(_Pop());
+            _Invoker.bind_task(_Pop());
             if (!_Invoker.execute()) {
                 _Myerror = _Invoker.error();
                 return false;

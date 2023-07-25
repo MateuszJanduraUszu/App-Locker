@@ -10,9 +10,6 @@
 #include <vector>
 
 namespace dbmgr {
-    using ::std::vector;
-    using ::std::wstring_view;
-
     class __declspec(novtable) task { // base class for all tasks
     public:
         virtual bool execute() noexcept            = 0;
@@ -24,33 +21,42 @@ namespace dbmgr {
         help() noexcept;
         ~help() noexcept;
 
+        // shows the application usage
         bool execute() noexcept override;
+
+        // returns an error (never occurs)
         const char* error() const noexcept override;
     };
 
     class lock : public task {
     public:
-        explicit lock(const wstring_view _Target) noexcept;
+        explicit lock(const ::std::wstring_view _Target) noexcept;
         ~lock() noexcept;
 
+        // locks the specified application
         bool execute() noexcept override;
+
+        // returns an error
         const char* error() const noexcept override;
 
     private:
-        const wstring_view _Mytarget;
+        const ::std::wstring_view _Mytarget;
         const char* _Myerror;
     };
 
     class unlock : public task {
     public:
-        explicit unlock(const wstring_view _Target) noexcept;
+        explicit unlock(const ::std::wstring_view _Target) noexcept;
         ~unlock() noexcept;
 
+        // unlocks the specified application
         bool execute() noexcept override;
+        
+        // returns an error
         const char* error() const noexcept override;
 
     private:
-        const wstring_view _Mytarget;
+        const ::std::wstring_view _Mytarget;
         const char* _Myerror;
     };
 
@@ -59,20 +65,26 @@ namespace dbmgr {
         unlock_all() noexcept;
         ~unlock_all() noexcept;
 
+        // unlocks all locked applications
         bool execute() noexcept override;
+
+        // returns an error
         const char* error() const noexcept override;
     };
 
     class status : public task {
     public:
-        explicit status(const wstring_view _Target) noexcept;
+        explicit status(const ::std::wstring_view _Target) noexcept;
         ~status() noexcept;
 
+        // checks if the specified application is locked
         bool execute() noexcept override;
+        
+        // returns an error (never occurs)
         const char* error() const noexcept override;
 
     private:
-        const wstring_view _Mytarget;
+        const ::std::wstring_view _Mytarget;
     };
 
     [[nodiscard]] task* make_task(const wchar_t* const _Arg) noexcept;
@@ -82,11 +94,17 @@ namespace dbmgr {
         task_invoker() noexcept;
         ~task_invoker() noexcept;
 
-        void acquire_task(task* const _Task) noexcept;
+        // binds a new task
+        void bind_task(task* const _Task) noexcept;
+        
+        // executes the binded task
         bool execute() noexcept;
+
+        // returns an error
         const char* error() const noexcept;
 
     private:
+        // releases the binded task
         void _Release_task() noexcept;
 
         task* _Mytask;
@@ -100,15 +118,23 @@ namespace dbmgr {
         task_queue(const task_queue&) = delete;
         task_queue& operator=(const task_queue&) = delete;
 
+        // adds a new task to the queue
         void push(task* const _Task) noexcept;
+        
+        // executes all tasks stored in the queue
         bool execute() noexcept;
+
+        // returns an error
         const char* error() const noexcept;
 
     private:
+        // clears the queue
         void _Clear() noexcept;
+
+        // removes and returns the task from the top of the queue
         [[nodiscard]] task* _Pop() noexcept;
 
-        vector<task*> _Mytasks;
+        ::std::vector<task*> _Mytasks;
         const char* _Myerror;
     };
 } // namespace dbmgr
