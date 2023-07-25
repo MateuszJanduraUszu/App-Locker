@@ -87,7 +87,7 @@ namespace dbmgr {
         return nullptr; // error never occurs
     }
 
-    status::status(const wstring_view _Target) noexcept : _Mytarget(_Target) {}
+    status::status(const ::std::wstring_view _Target) noexcept : _Mytarget(_Target) {}
 
     status::~status() noexcept {}
 
