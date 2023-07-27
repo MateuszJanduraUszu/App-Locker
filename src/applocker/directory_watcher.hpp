@@ -11,10 +11,8 @@
 #include <Windows.h>
 
 namespace applocker {
-    extern [[nodiscard]] void* _Open_watched_directory() noexcept;
-
     template <class _Elem, size_t _Size>
-    consteval size_t _Str_size(const _Elem(&)[_Size]) noexcept {
+    constexpr size_t _Str_size(const _Elem(&)[_Size]) noexcept {
         return _Size;
     }
 
@@ -27,8 +25,18 @@ namespace applocker {
         directory_watcher(const directory_watcher&) = delete;
         directory_watcher& operator=(const directory_watcher&) = delete;
 
+        enum wait_result : unsigned char {
+            error,
+            stop_watching,
+            continue_wait,
+            update_required
+        };
+
+        // checks if the watcher is watching
         bool is_watching() const noexcept;
-        bool wait_for_changes() noexcept;
+
+        // waits for some directory changes
+        wait_result wait_for_changes() noexcept;
 
     private:
         struct _Notification_events {
@@ -41,9 +49,18 @@ namespace applocker {
         // Note: The max buffer size used by ReadDirectoryChangesW() can be calculated using this
         //       equation: sizeof(FILE_NOTIFY_INFORMATION) + (strlen(filename) * sizeof(wchar_t)).
         //       It is correct since we are only interested in one file (apps.db).
+#ifdef _M_X64
+        static constexpr unsigned long _Max_buffer_size = static_cast<unsigned long>(
+            sizeof(FILE_NOTIFY_INFORMATION) + (_Str_size("apps.db") * sizeof(wchar_t)));
+#else // ^^^ _M_X64 ^^^ / vvv _M_IX86 vvv
         static constexpr unsigned long _Max_buffer_size = sizeof(FILE_NOTIFY_INFORMATION)
             + (_Str_size("apps.db") * sizeof(wchar_t));
+#endif // _M_X64
 
+        // opens the watched directory
+        [[nodiscard]] static void* _Open_watched_directory() noexcept;
+
+        // checks if the watcher should notify waiting thread
         static bool _Should_notify(FILE_NOTIFY_INFORMATION* const _Info) noexcept;
 
         void* _Mydir;
