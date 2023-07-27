@@ -22,7 +22,7 @@ namespace dbmgr {
     size_t _File_traits::_Size(const _Handle_type _Handle) noexcept {
 #ifdef _M_X64
         unsigned long _High = 0; // higher 32 bits
-        return static_cast<size_t>(::GetFileSize(_Handle, &_High) | (_High << 32));
+        return static_cast<size_t>(::GetFileSize(_Handle, &_High)) | (static_cast<size_t>(_High) << 32);
 #else // ^^^ _M_X64 ^^^ / vvv _M_IX86 vvv
         return static_cast<size_t>(::GetFileSize(_Handle, nullptr));
 #endif // _M_X64
@@ -52,7 +52,7 @@ namespace dbmgr {
         unsigned long _Written     = 0;
 #ifdef _M_X64
         const unsigned long _USize = static_cast<unsigned long>(_Size);
-        return ::WriteFile(_Handle, _Data, _Size, &_Written, nullptr) != 0 && _Written == _USize;
+        return ::WriteFile(_Handle, _Data, _USize, &_Written, nullptr) != 0 && _Written == _USize;
 #else // ^^^ _M_X64 ^^^ / vvv _M_IX86 vvv
         return ::WriteFile(_Handle, _Data, _Size, &_Written, nullptr) != 0 && _Written == _Size;
 #endif // _M_X64
