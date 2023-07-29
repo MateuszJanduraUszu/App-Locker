@@ -25,7 +25,7 @@ namespace applocker {
         const native_handle_type native_handle() const noexcept;
         
         // waits for the event notification
-        void wait() noexcept;
+        void wait(const bool _Reset = false) noexcept;
         
         // notifies the event
         void notify() noexcept;

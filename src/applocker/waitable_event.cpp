@@ -28,9 +28,11 @@ namespace applocker {
         return _Myimpl;
     }
 
-    void waitable_event::wait() noexcept {
+    void waitable_event::wait(const bool _Reset) noexcept {
         if (_Myimpl) {
-            ::WaitForSingleObject(_Myimpl, 0xFFFF'FFFF); // infinite timeout
+            if (::WaitForSingleObject(_Myimpl, 0xFFFF'FFFF) == WAIT_OBJECT_0 && _Reset) {
+                ::ResetEvent(_Myimpl);
+            }
         }
     }
 
