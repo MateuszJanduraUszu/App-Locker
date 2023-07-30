@@ -12,10 +12,10 @@ namespace dbmgr {
         return ::IsProcessorFeaturePresent(PF_SSE4_2_INSTRUCTIONS_AVAILABLE) != 0;
     }
 
-    uint32_t _Crc32c_traits::_Compute_sse42(const void* _First, const void* const _Last) noexcept {
+    checksum_t _Crc32c_traits::_Compute_sse42(const void* _First, const void* const _Last) noexcept {
         const unsigned char* _Bytes_first      = static_cast<const unsigned char*>(_First);
         const unsigned char* const _Bytes_last = static_cast<const unsigned char*>(_Last);
-        uint32_t _Result                       = 0xFFFF'FFFF;
+        checksum_t _Result                     = 0xFFFF'FFFF;
         while (_Bytes_first != _Bytes_last) {
             _Result = ::_mm_crc32_u8(_Result, *_Bytes_first);
             ++_Bytes_first;
@@ -24,10 +24,10 @@ namespace dbmgr {
         return _Result ^ 0xFFFF'FFFF;
     }
 
-    uint32_t _Crc32c_traits::_Compute_normal(const void* _First, const void* const _Last) noexcept {
+    checksum_t _Crc32c_traits::_Compute_normal(const void* _First, const void* const _Last) noexcept {
         const unsigned char* _Bytes_first      = static_cast<const unsigned char*>(_First);
         const unsigned char* const _Bytes_last = static_cast<const unsigned char*>(_Last);
-        uint32_t _Result                       = 0xFFFF'FFFF;
+        checksum_t _Result                     = 0xFFFF'FFFF;
         static constexpr uint32_t _Table[256]  = { // CRC-32C lookup table
             0x00000000, 0xF26B8303, 0xE13B70F7, 0x1350F3F4, 0xC79A971F, 0x35F1141C,
             0x26A1E7E8, 0xD4CA64EB, 0x8AD958CF, 0x78B2DBCC, 0x6BE22838, 0x9989AB3B,
@@ -81,7 +81,7 @@ namespace dbmgr {
         return _Result ^ 0xFFFF'FFFF;
     }
 
-    uint32_t compute_checksum(const ::std::wstring_view _Str) noexcept {
+    checksum_t compute_checksum(const ::std::wstring_view _Str) noexcept {
         if (_Crc32c_traits::_Use_sse42()) {
             return _Crc32c_traits::_Compute_sse42(_Str.data(), _Str.data() + _Str.size());
         } else {
