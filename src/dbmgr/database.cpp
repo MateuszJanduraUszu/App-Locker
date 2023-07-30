@@ -3,9 +3,10 @@
 // Copyright (c) Mateusz Jandura. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-#include <dbmgr/database.hpp>
 #include <cstring>
+#include <dbmgr/database.hpp>
 #include <memory>
+#include <type_traits>
 #include <Windows.h>
 
 namespace dbmgr {
@@ -114,6 +115,46 @@ namespace dbmgr {
         return _Myfile;
     }
 
+    database_entry::database_entry() noexcept : _Myval(0) {}
+
+    database_entry::database_entry(const database_entry& _Other) noexcept : _Myval(_Other._Myval) {}
+
+    database_entry::database_entry(database_entry&& _Other) noexcept : _Myval(::std::move(_Other._Myval)) {}
+
+    database_entry::database_entry(const uint32_t _Val) noexcept : _Myval(_Val) {}
+
+    database_entry::~database_entry() noexcept {}
+
+    database_entry& database_entry::operator=(const database_entry& _Other) noexcept {
+        if (this != ::std::addressof(_Other)) {
+            _Myval = _Other._Myval;
+        }
+
+        return *this;
+    }
+
+    database_entry& database_entry::operator=(database_entry&& _Other) noexcept {
+        if (this != ::std::addressof(_Other)) {
+            _Myval = ::std::move(_Other._Myval);
+        }
+
+        return *this;
+    }
+
+    bool database_entry::operator==(const database_entry& _Other) const noexcept {
+        return _Myval == _Other._Myval;
+    }
+
+    const uint32_t database_entry::to_integer() const noexcept {
+        return _Myval;
+    }
+
+    database_entry::byte_sequence database_entry::to_bytes() const noexcept {
+        byte_sequence _Result;
+        ::memcpy(_Result.data(), &_Myval, _Result.size());
+        return _Result;
+    }
+
     database::database() noexcept : _Myentries(), _Mysave(false) {
         _Load_database();
     }
@@ -124,14 +165,11 @@ namespace dbmgr {
         }
     }
 
-    database::entry_type database::_Make_entry(const ::std::wstring_view _Name) noexcept {
-        const uint32_t _Checksum = ::dbmgr::compute_checksum(_Name);
-        entry_type _Result;
-        ::memcpy(_Result.data(), &_Checksum, sizeof(uint32_t));
-        return _Result;
+    database_entry database::_Make_entry(const ::std::wstring_view _Name) noexcept {
+        return database_entry{::dbmgr::compute_checksum(_Name)};
     }
 
-    size_t database::_Find_entry(const entry_type& _Entry) const noexcept {
+    size_t database::_Find_entry(const database_entry& _Entry) const noexcept {
         const auto& _Iter = ::std::find(_Myentries.begin(), _Myentries.end(), _Entry);
         if (_Iter != _Myentries.end()) {
             return ::std::distance(_Myentries.begin(), _Iter);
@@ -160,16 +198,16 @@ namespace dbmgr {
 
     void database::_Extract_entries_from_bytes(
         const unsigned char* const _Bytes, size_t _Count) noexcept {
-        static constexpr size_t _Bytes_per_entry = 4;
+        static constexpr size_t _Bytes_per_entry = 4; // 4-byte entry
         const size_t _Remainder                  = _Count % _Bytes_per_entry;
         if (_Remainder != 0) { // skip incomplete entries
             _Count -= _Remainder;
         }
 
-        entry_type _Entry;
+        uint32_t _Val;
         for (size_t _Off = 0; _Off < _Count; _Off += _Bytes_per_entry) {
-            ::memcpy(_Entry.data(), _Bytes + _Off, _Bytes_per_entry);
-            _Myentries.push_back(_Entry);
+            ::memcpy(&_Val, _Bytes + _Off, _Bytes_per_entry);
+            _Myentries.push_back(database_entry{_Val});
         }
     }
 
@@ -177,8 +215,10 @@ namespace dbmgr {
         _Database_file _File;
         if (_File._Good()) {
             if (_File._Clear()) { // file must be empty
-                for (const entry_type& _Entry : _Myentries) {
-                    if (!_File._Write(_Entry.data(), _Entry.size())) { // something went wrong, break
+                database_entry::byte_sequence _Bytes;
+                for (const database_entry& _Entry : _Myentries) {
+                    _Bytes = _Entry.to_bytes();
+                    if (!_File._Write(_Bytes.data(), _Bytes.size())) { // something went wrong, break
                         break;
                     }
                 }
@@ -199,7 +239,7 @@ namespace dbmgr {
         return ::std::find(_Myentries.begin(), _Myentries.end(), _Make_entry(_Name)) != _Myentries.end();
     }
 
-    const ::std::vector<database::entry_type>& database::get_entries() const noexcept {
+    const ::std::vector<database_entry>& database::get_entries() const noexcept {
         return _Myentries;
     }
 
@@ -211,7 +251,7 @@ namespace dbmgr {
     }
 
     [[nodiscard]] bool database::append(const ::std::wstring_view _Name) {
-        const entry_type& _Entry = _Make_entry(_Name);
+        const database_entry& _Entry = _Make_entry(_Name);
         if (_Find_entry(_Entry) == _Npos) {
             _Myentries.push_back(_Entry);
             _Mysave = true; // save changes

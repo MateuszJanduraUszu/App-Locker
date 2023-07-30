@@ -3,9 +3,9 @@
 // Copyright (c) Mateusz Jandura. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+#include <cstdio>
 #include <dbmgr/task.hpp>
 #include <dbmgr/database.hpp>
-#include <cstdio>
 
 namespace dbmgr {
     help::help() noexcept {}

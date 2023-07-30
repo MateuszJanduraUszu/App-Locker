@@ -88,10 +88,35 @@ namespace dbmgr {
         path _Myfile;
     };
 
+    class database_entry {
+    public:
+        using byte_sequence = ::std::array<unsigned char, sizeof(uint32_t)>;
+
+        database_entry() noexcept;
+        database_entry(const database_entry& _Other) noexcept;
+        database_entry(database_entry&& _Other) noexcept;
+        ~database_entry() noexcept;
+
+        explicit database_entry(const uint32_t _Val) noexcept;
+
+        database_entry& operator=(const database_entry& _Other) noexcept;
+        database_entry& operator=(database_entry&& _Other) noexcept;
+
+        // compares two entries
+        bool operator==(const database_entry& _Other) const noexcept;
+
+        // returns the stored entry as a 4-byte integer
+        const uint32_t to_integer() const noexcept;
+
+        // returns the stored entry as a byte sequence
+        byte_sequence to_bytes() const noexcept;
+
+    private:
+        uint32_t _Myval; // 4-byte entry
+    };
+
     class database {
     public:
-        using entry_type = ::std::array<unsigned char, 4>; // 4-byte entry
-
         ~database() noexcept;
 
         database(const database&) = delete;
@@ -107,7 +132,7 @@ namespace dbmgr {
         bool has_entry(const ::std::wstring_view _Name) const noexcept;
         
         // returns all entries
-        const ::std::vector<entry_type>& get_entries() const noexcept;
+        const ::std::vector<database_entry>& get_entries() const noexcept;
         
         // clears the database
         void clear() noexcept;
@@ -127,10 +152,10 @@ namespace dbmgr {
         database() noexcept;
 
         // makes a database entry from
-        static entry_type _Make_entry(const ::std::wstring_view _Name) noexcept;
+        static database_entry _Make_entry(const ::std::wstring_view _Name) noexcept;
 
         // returns the position of the selected entry
-        size_t _Find_entry(const entry_type& _Entry) const noexcept;
+        size_t _Find_entry(const database_entry& _Entry) const noexcept;
         
         // loads the database
         void _Load_database() noexcept;
@@ -141,7 +166,7 @@ namespace dbmgr {
         // saves the database
         void _Save() noexcept;
 
-        ::std::vector<entry_type> _Myentries;
+        ::std::vector<database_entry> _Myentries;
         bool _Mysave; // true if the database should be saved
     };
 } // namespace dbmgr
