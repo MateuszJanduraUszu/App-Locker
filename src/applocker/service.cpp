@@ -3,69 +3,11 @@
 // Copyright (c) Mateusz Jandura. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
-#include <applocker/service.hpp>
 #include <applocker/directory_watcher.hpp>
-#include <applocker/process.hpp>
-#include <type_traits>
+#include <applocker/service.hpp>
+#include <applocker/wmi.hpp>
 
 namespace applocker {
-    _Service_cache::_Service_cache() noexcept
-        : _Handle(nullptr), _Status(), _Event(), _State(_Service_state::_Working) {}
-
-    _Service_cache::~_Service_cache() noexcept {}
-
-    _Service_state _Service_cache::_Get_state() const noexcept {
-        return _State.load(::std::memory_order_relaxed);
-    }
-
-    void _Service_cache::_Set_state(const _Service_state _New_state) noexcept {
-        _State.store(_New_state, ::std::memory_order_relaxed);
-    }
-
-    void _Service_cache::_Submit() noexcept {
-        ++_Status.dwCheckPoint;
-        ::SetServiceStatus(_Handle, ::std::addressof(_Status));
-    }
-
-    _Service_shared_cache::_Service_shared_cache() noexcept : _Mylock(SRWLOCK_INIT), _Myentries() {
-        _Set_entries(::dbmgr::database::current().get_entries());
-    }
-
-    _Service_shared_cache::~_Service_shared_cache() noexcept {}
-
-    _Service_shared_cache::_Lock_guard::_Lock_guard(SRWLOCK& _Lock, const bool _Shared) noexcept
-        : _Lock(::std::addressof(_Lock)), _Shared(_Shared) {
-        if (this->_Shared) {
-            ::AcquireSRWLockShared(this->_Lock);
-        } else {
-            ::AcquireSRWLockExclusive(this->_Lock);
-        }
-    }
-
-    _Service_shared_cache::_Lock_guard::~_Lock_guard() noexcept {
-        if (_Shared) {
-            ::ReleaseSRWLockShared(_Lock);
-        } else {
-            ::ReleaseSRWLockExclusive(_Lock);
-        }
-    }
-
-    _Service_shared_cache& _Service_shared_cache::_Get() noexcept {
-        static _Service_shared_cache _Cache;
-        return _Cache;
-    }
-
-    vector<::dbmgr::database::entry_type> _Service_shared_cache::_Get_entries() const noexcept {
-        _Lock_guard _Guard(_Mylock, true);
-        return _Myentries;
-    }
-
-    void _Service_shared_cache::_Set_entries(
-        const vector<::dbmgr::database::entry_type>& _New_entries) noexcept {
-        _Lock_guard _Guard(_Mylock, false);
-        _Myentries = _New_entries;
-    }
-
     _Database_modification_handler::_Database_modification_handler() noexcept
         : _Mycache(), _Mythread(_Create_thread(::std::addressof(_Mycache))) {}
 
@@ -79,16 +21,24 @@ namespace applocker {
                 _Thread_cache* _Local_cache          = static_cast<_Thread_cache*>(_Data);
                 _Service_shared_cache& _Shared_cache = _Service_shared_cache::_Get();
                 directory_watcher _Watcher(_Local_cache->_Event);
-                while (!_Local_cache->_Flag.test()) {
-                    // Note: The directory_watcher::wait_for_changes() returns true if any modifications
-                    //       has been made to the directory being monitored since the last call to this
-                    //       method. Otherwise it returns false, which means that we have been notified
-                    //       to end monitoring the directory.
-                    if (_Watcher.wait_for_changes()) { // refresh the database
+                if (!_Watcher.is_watching()) { // watcher inactive, break
+                    return 0;
+                }
+
+                while (!_Local_cache->_Flag.is_set()) {
+                    switch (_Watcher.wait_for_changes()) {
+                    case directory_watcher::stop_watching: // stop watching the database
+                        _Local_cache->_Flag.set();
+                        break;
+                    case directory_watcher::update_required: // reload the database
+                    {
                         ::dbmgr::database& _Db = ::dbmgr::database::current();
                         _Db.reload();
-                        _Shared_cache._Set_entries(_Db.get_entries());
-                    } else { // end monitoring the database
+                        _Shared_cache._Locked_apps.assign(_Db.get_entries());
+                        _Shared_cache._Task_event.notify(); // notify task's thread about the database changes
+                        break;
+                    }
+                    default:
                         break;
                     }
                 }
@@ -101,7 +51,7 @@ namespace applocker {
 
     void _Database_modification_handler::_Terminate() noexcept {
         if (_Mythread) {
-            _Mycache._Flag.test_and_set();
+            _Mycache._Flag.set();
             _Mycache._Event.notify();
             ::WaitForSingleObject(_Mythread, 0xFFFF'FFFF); // wait for the thread termination
             ::CloseHandle(_Mythread);
@@ -130,7 +80,7 @@ namespace applocker {
             const _Service_state _Old_state = _Cache->_Get_state();
             _Cache->_Set_state(_Service_state::_Terminated);
             if (_Old_state == _Service_state::_Waiting) {
-                _Cache->_Event.notify(); // notify waiting thread
+                _Cache->_State_event.notify(); // notify waiting thread
             }
 
             _Cache->_Submit();
@@ -144,7 +94,7 @@ namespace applocker {
         case SERVICE_CONTROL_CONTINUE:
             _Cache->_Status.dwCurrentState = SERVICE_RUNNING;
             _Cache->_Set_state(_Service_state::_Working);
-            _Cache->_Event.notify();
+            _Cache->_State_event.notify();
             _Cache->_Submit();
             break;
         default:
@@ -179,6 +129,11 @@ namespace applocker {
     }
 
     void service_launcher::_Perform_task() noexcept {
+        _Wmi_session _Session;
+        if (!_Session._Connect()) {
+            return;
+        }
+
         _Database_modification_handler _Handler;
         bool _Terminated              = false;
         _Service_shared_cache& _Cache = _Service_shared_cache::_Get();
@@ -187,18 +142,24 @@ namespace applocker {
             case _Service_state::_Terminated:
                 _Terminated = true;
                 _Handler._Terminate();
+                _Session._Terminate();
                 break;
             case _Service_state::_Waiting:
-                _Mycache._Event.wait();
-                _Mycache._Event.reset();
+                _Mycache._State_event.wait(true);
                 break;
             case _Service_state::_Working:
             {
-                ::Sleep(3000); // avoid high CPU usage
-                const auto& _Entries = _Cache._Get_entries();
-                if (!_Entries.empty()) {
-                    for (const uint32_t _Id : _Find_process_ids(_Entries)) {
-                        _Terminate_process(_Id);
+                _Cache._Task_event.wait(true);
+                const auto& _Apps = *_Cache._Locked_apps.get();
+                if (!_Apps.empty()) {
+                    const auto& _Procs = *_Cache._New_procs.get();
+                    for (const auto& _Proc : _Procs) {
+                        for (const auto& _App : _Apps) {
+                            if (_App.to_integer() == _Proc._Module_checksum) {
+                                _Process_traits::_Terminate(_Proc._Id);
+                                break;
+                            }
+                        }
                     }
                 }
 

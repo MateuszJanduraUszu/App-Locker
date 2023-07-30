@@ -6,74 +6,24 @@
 #pragma once
 #ifndef _APPLOCKER_SERVICE_HPP_
 #define _APPLOCKER_SERVICE_HPP_
-#include <applocker/waitable_event.hpp>
-#include <dbmgr/database.hpp>
-#include <atomic>
-#include <vector>
-#include <windows.h>
+#include <applocker/service_caches.hpp>
 
 namespace applocker {
-    using ::std::atomic;
-    using ::std::atomic_flag;
-    using ::std::vector;
-
-    enum class _Service_state : unsigned char {
-        _Terminated,
-        _Waiting,
-        _Working
-    };
-
-    class _Service_cache {
-    public:
-        SERVICE_STATUS_HANDLE _Handle;
-        SERVICE_STATUS _Status;
-        waitable_event _Event;
-        atomic<_Service_state> _State;
-
-        _Service_cache() noexcept;
-        ~_Service_cache() noexcept;
-
-        _Service_state _Get_state() const noexcept;
-        void _Set_state(const _Service_state _New_state) noexcept;
-        void _Submit() noexcept;
-    };
-
-    class _Service_shared_cache {
-    public:
-        ~_Service_shared_cache() noexcept;
-
-        static _Service_shared_cache& _Get() noexcept;
-        vector<::dbmgr::database::entry_type> _Get_entries() const noexcept;
-        void _Set_entries(const vector<::dbmgr::database::entry_type>& _New_entries) noexcept;
-
-    private:
-        _Service_shared_cache() noexcept;
-        
-        struct _Lock_guard {
-            SRWLOCK* _Lock;
-            bool _Shared;
-
-            explicit _Lock_guard(SRWLOCK& _Lock, const bool _Shared) noexcept;
-            ~_Lock_guard() noexcept;
-        };
-
-        mutable SRWLOCK _Mylock;
-        vector<::dbmgr::database::entry_type> _Myentries;
-    };
-
     class _Database_modification_handler { // handles database modification at runtime
     public:
         _Database_modification_handler() noexcept;
         ~_Database_modification_handler() noexcept;
 
+        // terminates database modification handler thread
         void _Terminate() noexcept;
 
     private:
         struct _Thread_cache {
             waitable_event _Event;
-            atomic_flag _Flag;
+            sync_flag _Flag;
         };
 
+        // creates database modification handler thread
         static void* _Create_thread(_Thread_cache* const _Cache) noexcept;
     
         _Thread_cache _Mycache;
@@ -85,17 +35,29 @@ namespace applocker {
         service_launcher() noexcept;
         ~service_launcher() noexcept;
 
-        bool is_launch_possible() const noexcept;
-        void launch() noexcept;
-
         static constexpr wchar_t service_name[] = L"App Locker";
 
+        // checks if launch is possible
+        bool is_launch_possible() const noexcept;
+        
+        // launches the service
+        void launch() noexcept;
+
     private:
+        // handles the service control signals
         static unsigned long __stdcall _Control_handler(
             unsigned long _Code, unsigned long, void*, void* _Ctx) noexcept;
+
+        // initializes the service
         void _Init() noexcept;
+
+        // registers the service control handler
         [[nodiscard]] bool _Register_control_handler() noexcept;
+        
+        // changes the service state
         void _Set_state(const unsigned long _New_state) noexcept;
+        
+        // performs the service task
         void _Perform_task() noexcept;
 
         _Service_cache _Mycache;
