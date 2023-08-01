@@ -43,7 +43,7 @@ namespace applocker {
     class _Service_shared_cache { // service's shared cache
     public:
         locked_resource<::std::vector<::dbmgr::database_entry>> _Locked_apps;
-        locked_resource<::std::vector<_Process_traits::_Basic_data>> _New_procs;
+        locked_resource<_Process_list> _New_procs;
         waitable_event _Task_event;
 
         ~_Service_shared_cache() noexcept;
