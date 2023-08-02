@@ -2,22 +2,47 @@ App Locker
 ---
 
 App Locker is a straightforward application that blocks the execution of specific
-applications written in C++ 20. It can operate without administrator privileges,
+applications written in C++17. It can operate without administrator privileges,
 but it requires them for the setup process.
+
+Build
+---
+
+To successfully build the project, follow these steps:
+
+1. Ensure that you have CMake and a compiler known to CMake properly installed.
+2. Clone the repository using the following command:
+
+```bat
+git clone https://github.com/MateuszJanduraUszu/App-Locker.git
+```
+
+3. Build the `applocker` executable:
+
+```bat
+cd build\scripts\applocker
+build.bat {x64|Win32} "{Compiler}"
+```
+
+4. Build the `dbmgr` executable:
+
+```bat
+cd build\scripts\dbmgr
+build.bat {x64|Win32} "{Compiler}"
+```
+
+These steps will help you compile the project's executables using the specified
+platform architecture and compiler.
 
 Installation
 ---
 
-1. Open `install.bat`.
-2. Change `Your absolute path to applocker.exe` to path where `applocker.exe` is localized,
-for eg. `C:\Users\Username\Desktop\App Locker\applocker.exe`.
-3. Save.
-4. Run as administrator (`sc.exe` requires administrator privileges).
+Run `install.bat` as administrator.
 
 Uninstallation
 ---
 
-Just run `uninstall.bat` as administrator.
+Run `uninstall.bat` as administrator.
 
 Usage
 ---
@@ -30,7 +55,34 @@ that can be used with the `dbmgr.exe` utility:
 * `--unlock-all` - Unlocks all locked applications.
 * `--status=name` - Checks whether the specified application is currently locked.
 
-How it works?
+Examples
+---
+
+- To lock an application:
+
+```bat
+dbmgr.exe --lock=Notepad.exe
+```
+
+- To unlock an application:
+
+```bat
+dbmgr.exe --unlock=Notepad.exe
+```
+
+- To unlock all locked applications
+
+```bat
+dbmgr.exe --unlock-all
+```
+
+- To check if an application is locked:
+
+```bat
+dbmgr.exe --status=Notepad.exe
+```
+
+How it works
 ---
 
 The App Locker application consists of two components - the App Locker Database
@@ -51,6 +103,11 @@ Additional informations
 
 Please note that locking system applications can cause errors and even break your
 operating system. You should carefully consider the consequences before locking any
-application. Additionally, please note that the App Locker Service refreshes every
-3 seconds. As a result, locked applications may close at different times. This is
-intentional and designed to avoid high CPU usage, especially on CPUs with fewer cores.
+application.
+
+License
+---
+
+Copyright © Mateusz Jandura.
+
+SPDX-License-Identifier: Apache-2.0
