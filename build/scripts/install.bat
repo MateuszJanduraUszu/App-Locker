@@ -4,5 +4,5 @@
 :: SPDX-License-Identifier: Apache-2.0
 
 @echo off
-sc create "App Locker" start=auto binPath="Your absolute path to applocker.exe"
+sc create "App Locker" start=auto binPath="%~dp0\applocker.exe"
 sc start "App Locker"
