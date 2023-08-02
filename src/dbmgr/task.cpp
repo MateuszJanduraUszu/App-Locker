@@ -114,12 +114,13 @@ namespace dbmgr {
                 return nullptr;
             }
 
-            const ::std::wstring_view _Target = _As_view.substr(_Eq_pos + 1);
-            if (_As_view.contains(L"--lock")) {
+            const ::std::wstring_view _Target  = _As_view.substr(_Eq_pos + 1);
+            static constexpr size_t _Not_found = ::std::wstring_view::npos;
+            if (_As_view.find(L"--lock") != _Not_found) {
                 return new lock(_Target);
-            } else if (_As_view.contains(L"--unlock")) {
+            } else if (_As_view.find(L"--unlock") != _Not_found) {
                 return new unlock(_Target);
-            } else if (_As_view.contains(L"--status")) {
+            } else if (_As_view.find(L"--status") != _Not_found) {
                 return new status(_Target);
             } else { // unknown command
                 return nullptr;
