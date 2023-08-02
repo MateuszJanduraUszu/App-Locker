@@ -15,5 +15,5 @@ pause :: pause to see build logs
 
 :create_directory
 if not exist "%~1" (
-	mkdir "%~1"
+    mkdir "%~1"
 )
