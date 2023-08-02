@@ -152,9 +152,20 @@ namespace applocker {
                 _Cache._Task_event.wait(true);
                 const auto& _Apps = *_Cache._Locked_apps.get();
                 if (!_Apps.empty()) {
-                    const auto& _Procs = *_Cache._New_procs.get();
+                    // Note: The task's event is notified in two cases - new process creation and database change.
+                    //       In the first case, the _Cache._New_procs holds the basic data of all new processes.
+                    //       In the second case, the _Cache._New_procs is empty, but we must obtain the full
+                    //       process list to check if a newly locked application is currently running.
+                    _Process_list _Procs = *_Cache._New_procs.get();
+                    if (!_Procs.empty()) { // scan new processes
+                        _Cache._New_procs->clear();
+                    } else { // scan existing processes
+                        _Procs = _Process_traits::_Get_process_list();
+                    }
+
                     for (const auto& _Proc : _Procs) {
                         for (const auto& _App : _Apps) {
+                            // Note: The _App.to_integer() returns the locked application checksum.
                             if (_App.to_integer() == _Proc._Module_checksum) {
                                 _Process_traits::_Terminate(_Proc._Id);
                                 break;
