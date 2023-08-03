@@ -1,12 +1,10 @@
-App Locker
----
+# App Locker
 
 App Locker is a straightforward application that blocks the execution of specific
 applications written in C++17. It can operate without administrator privileges,
 but it requires them for the setup process.
 
-Build
----
+## Build
 
 To successfully build the project, follow these steps:
 
@@ -34,18 +32,15 @@ build.bat {x64|Win32} "{Compiler}"
 These steps will help you compile the project's executables using the specified
 platform architecture and compiler.
 
-Installation
----
+## Installation
 
 Run `install.bat` as administrator.
 
-Uninstallation
----
+## Uninstallation
 
 Run `uninstall.bat` as administrator.
 
-Usage
----
+## Usage
 
 `dbmgr.exe` manages the list of locked applications. Below is a list of commands
 that can be used with the `dbmgr.exe` utility:
@@ -55,8 +50,7 @@ that can be used with the `dbmgr.exe` utility:
 * `--unlock-all` - Unlocks all locked applications.
 * `--status=name` - Checks whether the specified application is currently locked.
 
-Examples
----
+## Examples
 
 - To lock an application:
 
@@ -82,8 +76,7 @@ dbmgr.exe --unlock-all
 dbmgr.exe --status=Notepad.exe
 ```
 
-How it works
----
+## How it works
 
 The App Locker application consists of two components - the App Locker Database
 Manager (ALDM) and the App Locker Service (ALS). The ALDM maintains the list of locked
@@ -91,22 +84,19 @@ applications, while the ALS searches for and terminates any locked application p
 Note that the ALS uses a directory watcher to receive updates on the list of locked
 applications, making it safe to use the ALDM while the ALS is running.
 
-Compatibility
----
+## Compatibility
 
 I have tested it on Windows 11 22H2 22621.1413 and it worked well.
 While I have not tested it on Windows 10, I expect it to work equally well on
 that operating system.
 
-Additional informations
----
+## Additional informations
 
 Please note that locking system applications can cause errors and even break your
 operating system. You should carefully consider the consequences before locking any
 application.
 
-License
----
+## License
 
 Copyright © Mateusz Jandura.
 
