@@ -8,7 +8,6 @@
 #include <memory>
 #include <mjfs/file_stream.hpp>
 #include <type_traits>
-#include <Windows.h>
 
 namespace dbmgr {
     database_location::database_location()
