@@ -4,6 +4,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <cstdio>
+#include <new>
 #include <dbmgr/task.hpp>
 #include <dbmgr/database.hpp>
 
@@ -78,8 +79,7 @@ namespace dbmgr {
     unlock_all::~unlock_all() noexcept {}
 
     bool unlock_all::execute() noexcept {
-        database& _Db = database::current();
-        _Db.clear();
+        database::current().clear();
         return true;
     }
 
@@ -92,8 +92,7 @@ namespace dbmgr {
     status::~status() noexcept {}
 
     bool status::execute() noexcept {
-        database& _Db = database::current();
-        if (_Db.has_entry(_Mytarget)) {
+        if (database::current().has_entry(_Mytarget)) {
             ::puts("[STATUS]: The application is locked.");
         } else {
             ::puts("[STATUS]: The application is not locked.");
@@ -114,22 +113,22 @@ namespace dbmgr {
                 return nullptr;
             }
 
-            const ::std::wstring_view _Target  = _As_view.substr(_Eq_pos + 1);
+            const ::std::wstring_view _Target  = _Arg + _Eq_pos + 1;
             static constexpr size_t _Not_found = ::std::wstring_view::npos;
             if (_As_view.find(L"--lock") != _Not_found) {
-                return new lock(_Target);
+                return new (::std::nothrow) lock(_Target);
             } else if (_As_view.find(L"--unlock") != _Not_found) {
-                return new unlock(_Target);
+                return new (::std::nothrow) unlock(_Target);
             } else if (_As_view.find(L"--status") != _Not_found) {
-                return new status(_Target);
+                return new (::std::nothrow) status(_Target);
             } else { // unknown command
                 return nullptr;
             }
         } else { // generic command
             if (_As_view == L"--help") {
-                return new help();
+                return new (::std::nothrow) help();
             } else if (_As_view == L"--unlock-all") {
-                return new unlock_all();
+                return new (::std::nothrow) unlock_all();
             } else { // unknown command
                 return nullptr;
             }
