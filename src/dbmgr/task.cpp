@@ -4,9 +4,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <cstdio>
-#include <new>
 #include <dbmgr/task.hpp>
 #include <dbmgr/database.hpp>
+#include <new>
 
 namespace dbmgr {
     help::help() noexcept {}
