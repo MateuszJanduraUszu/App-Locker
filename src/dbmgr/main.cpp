@@ -3,6 +3,7 @@
 // Copyright (c) Mateusz Jandura. All rights reserved.
 // SPDX-License-Identifier: Apache-2.0
 
+#include <cstdio>
 #include <dbmgr/task.hpp>
 
 inline int _Entry_point(int _Count, wchar_t** _Args) {
