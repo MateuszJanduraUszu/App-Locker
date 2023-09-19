@@ -89,10 +89,10 @@ namespace dbmgr {
 
     [[nodiscard]] task* make_task(const wchar_t* const _Arg) noexcept;
 
-    class task_invoker { // manages task lifetime and execution
+    class task_executor { // manages task lifetime and execution
     public:
-        task_invoker() noexcept;
-        ~task_invoker() noexcept;
+        task_executor() noexcept;
+        ~task_executor() noexcept;
 
         // binds a new task
         void bind_task(task* const _Task) noexcept;
@@ -119,7 +119,7 @@ namespace dbmgr {
         task_queue& operator=(const task_queue&) = delete;
 
         // adds a new task to the queue
-        void push(task* const _Task) noexcept;
+        void push(task* const _Task);
         
         // executes all tasks stored in the queue
         bool execute() noexcept;

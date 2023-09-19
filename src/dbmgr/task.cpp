@@ -136,29 +136,29 @@ namespace dbmgr {
         }
     }
 
-    task_invoker::task_invoker() noexcept : _Mytask(nullptr) {}
+    task_executor::task_executor() noexcept : _Mytask(nullptr) {}
 
-    task_invoker::~task_invoker() noexcept {
+    task_executor::~task_executor() noexcept {
         _Release_task();
     }
 
-    void task_invoker::_Release_task() noexcept {
+    void task_executor::_Release_task() noexcept {
         if (_Mytask) {
             delete _Mytask;
             _Mytask = nullptr;
         }
     }
 
-    void task_invoker::bind_task(task* const _Task) noexcept {
+    void task_executor::bind_task(task* const _Task) noexcept {
         _Release_task();
         _Mytask = _Task;
     }
 
-    bool task_invoker::execute() noexcept {
+    bool task_executor::execute() noexcept {
         return _Mytask ? _Mytask->execute() : false;
     }
 
-    const char* task_invoker::error() const noexcept {
+    const char* task_executor::error() const noexcept {
         return _Mytask ? _Mytask->error() : nullptr;
     }
 
@@ -183,16 +183,16 @@ namespace dbmgr {
         return _Result;
     }
 
-    void task_queue::push(task* const _Task) noexcept {
+    void task_queue::push(task* const _Task) {
         _Mytasks.push_back(_Task);
     }
 
     bool task_queue::execute() noexcept {
-        task_invoker _Invoker;
+        task_executor _Executor;
         while (!_Mytasks.empty()) {
-            _Invoker.bind_task(_Pop());
-            if (!_Invoker.execute()) {
-                _Myerror = _Invoker.error();
+            _Executor.bind_task(_Pop());
+            if (!_Executor.execute()) {
+                _Myerror = _Executor.error();
                 return false;
             }
         }
