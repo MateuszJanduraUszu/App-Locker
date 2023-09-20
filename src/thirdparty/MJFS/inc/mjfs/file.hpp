@@ -17,7 +17,7 @@ namespace mjfs {
         read    = 0x8000'0000, // GENERIC_READ
         write   = 0x4000'0000, // GENERIC_WRITE
         execute = 0x2000'0000, // GENERIC_EXECUTE
-        all     = read | write | execute
+        all     = 0x1000'0000 // GENERIC_ALL
     };
 
     _DECLARE_BIT_OPS(file_access)
