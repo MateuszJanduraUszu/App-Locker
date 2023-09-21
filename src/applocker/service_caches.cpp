@@ -25,7 +25,12 @@ namespace applocker {
     }
 
     _Service_shared_cache::_Service_shared_cache() noexcept : _Locked_apps(), _New_procs(), _Task_event() {
+        // Note: Immediate notification of the task thread is essential after the database is loaded.
+        //       This is because some locked processes may still be running. At this stage, _New_procs
+        //       doesn't yet contain any processes, so the task thread will scan existing processes to
+        //       identify any that need further attention.
         _Locked_apps.assign(::dbmgr::database::current().get_entries());
+        _Task_event.notify();
     }
 
     _Service_shared_cache::~_Service_shared_cache() noexcept {}
