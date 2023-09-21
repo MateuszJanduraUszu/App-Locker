@@ -24,7 +24,7 @@ namespace applocker {
         ::SetServiceStatus(_Handle, ::std::addressof(_Status));
     }
 
-    _Service_shared_cache::_Service_shared_cache() noexcept : _Locked_apps(), _New_procs(), _Task_event() {
+    _Service_shared_cache::_Service_shared_cache() : _Locked_apps(), _New_procs(), _Task_event() {
         // Note: Immediate notification of the task thread is essential after the database is loaded.
         //       This is because some locked processes may still be running. At this stage, _New_procs
         //       doesn't yet contain any processes, so the task thread will scan existing processes to

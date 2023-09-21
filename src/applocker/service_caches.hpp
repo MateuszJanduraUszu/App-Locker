@@ -52,7 +52,7 @@ namespace applocker {
         static _Service_shared_cache& _Get() noexcept;
 
     private:
-        _Service_shared_cache() noexcept;
+        _Service_shared_cache();
     };
 } // namespace applocker
 
