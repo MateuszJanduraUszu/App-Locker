@@ -21,8 +21,8 @@ namespace applocker {
         directory_watcher(waitable_event& _Event) noexcept;
         ~directory_watcher() noexcept;
 
-        directory_watcher() = delete;
-        directory_watcher(const directory_watcher&) = delete;
+        directory_watcher()                                    = delete;
+        directory_watcher(const directory_watcher&)            = delete;
         directory_watcher& operator=(const directory_watcher&) = delete;
 
         enum wait_result : unsigned char {

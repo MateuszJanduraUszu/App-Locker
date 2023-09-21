@@ -9,13 +9,13 @@
 namespace applocker {
     directory_watcher::directory_watcher(waitable_event& _Event) noexcept
         : _Mydir(_Open_watched_directory()), _Mybuf(), _Myevents(_Event), _Myovl() {
-        if (_Mydir) {
+        if (is_watching()) {
             _Myovl.hEvent = _Myevents._Dir_event.native_handle();
         }
     }
 
     directory_watcher::~directory_watcher() noexcept {
-        if (_Mydir) {
+        if (is_watching()) {
             ::CloseHandle(_Mydir);
             _Mydir = nullptr;
         }
@@ -41,7 +41,7 @@ namespace applocker {
     }
 
     bool directory_watcher::is_watching() const noexcept {
-        return _Mydir != nullptr;
+        return _Mydir != nullptr && _Mydir != INVALID_HANDLE_VALUE;
     }
 
     directory_watcher::wait_result directory_watcher::wait_for_changes() noexcept {
