@@ -8,6 +8,9 @@
 #include <memory>
 #include <mjfs/file_stream.hpp>
 #include <type_traits>
+#ifdef _APPLOCKER_SERVICE
+#include <Windows.h>
+#endif // _APPLOCKER_SERVICE
 
 namespace dbmgr {
     database_location::database_location()
@@ -16,7 +19,43 @@ namespace dbmgr {
     database_location::~database_location() noexcept {}
 
     ::mjfs::path database_location::_Get_directory_path() {
-        return ::mjfs::current_path().remove_filename();
+        // Note: This function is designed to handle both console applications and services.
+        //       In a console application, it is sufficient to call mjfs::current_path() to retrive the
+        //       current working directory. However, services start in a different directory by default.
+        //       To accommodate this difference, we use a conditional approach: _APPLOCKER_SERVICE is
+        //       defined during the compilation of applocker.exe only. In the case of a service,
+        //       we employ the GetModuleFileNameW() function to obtain the current directory reliably.
+#ifdef _APPLOCKER_SERVICE
+        size_t _Buf_size = 260; // MAX_PATH (in fact MAX_PATH + 1, because std::wstring includes null-terminator)
+        ::mjfs::path::string_type _Buf(_Buf_size, L'\0');
+        size_t _Copied; // number of elements copied into the buffer
+        unsigned long _Error; // last error
+        for (;;) {
+#ifdef _M_X64
+            _Copied = static_cast<size_t>(
+                ::GetModuleFileNameW(nullptr, _Buf.data(), static_cast<unsigned long>(_Buf_size + 1)));
+#else // ^^^ _M_X64 ^^^ / vvv _M_IX86
+            _Copied = ::GetModuleFileNameW(nullptr, _Buf.data(), _Buf_size + 1);
+#endif // _M_X64
+            _Error  = ::GetLastError();
+            if (_Error == ERROR_SUCCESS) { // buffer was sufficient, break
+                break;
+            } else if (_Error == ERROR_INSUFFICIENT_BUFFER) { // increase the buffer and try again
+                _Buf_size *= 2;
+                _Buf.resize(_Buf_size);
+            } else { // an error occured, break
+                return ::mjfs::path{};
+            }
+        }
+
+        if (_Copied < _Buf_size) { // buffer too large, decrease it
+            _Buf.resize(_Copied);
+        }
+
+        return ::mjfs::path{::std::move(_Buf)}.remove_filename();
+#else // ^^^ _APPLOCKER_SERVICE ^^^ / vvv !_APPLOCKER_SERVICE vvv
+        return ::mjfs::current_path();
+#endif // _APPLOCKER_SERVICE
     }
 
     database_location& database_location::current() noexcept {
