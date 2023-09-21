@@ -6,6 +6,7 @@
 #include <applocker/service_caches.hpp>
 #include <applocker/wmi.hpp>
 #include <combaseapi.h>
+#include <new>
 
 namespace applocker {
     _Com_instance::_Com_instance() noexcept
@@ -27,7 +28,7 @@ namespace applocker {
             RPC_C_IMP_LEVEL_IMPERSONATE, nullptr, EOAC_NONE, nullptr) == S_OK;
     }
 
-    const bool _Com_instance::_Valid() const noexcept {
+    bool _Com_instance::_Valid() const noexcept {
         return _Myinst && _Mysec;
     }
 
@@ -60,7 +61,7 @@ namespace applocker {
             return false;
         }
 
-        _Sink = new _Event_sink(_Service_shared_cache::_Get()._Task_event);
+        _Sink = new (::std::nothrow) _Event_sink(_Service_shared_cache::_Get()._Task_event);
         if (!_Sink._Valid()) {
             return false;
         }

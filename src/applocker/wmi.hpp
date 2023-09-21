@@ -16,7 +16,7 @@ namespace applocker {
         ~_Com_instance() noexcept;
 
         // checks if the COM instance is valid
-        const bool _Valid() const noexcept;
+        bool _Valid() const noexcept;
 
     private:
         // initializes COM
