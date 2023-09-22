@@ -112,7 +112,8 @@ namespace dbmgr {
     }
 
     void database::_Load_database() {
-        ::mjfs::file _File(database_location::current().file());
+        ::mjfs::file _File(
+            database_location::current().file(), ::mjfs::file_access::read, ::mjfs::file_share::read);
         ::mjfs::file_stream _Stream(_File);
         if (_Stream.is_open()) {
             static constexpr size_t _Stack_buf_size = 1024;
@@ -150,7 +151,7 @@ namespace dbmgr {
     }
 
     void database::_Save() noexcept {
-        ::mjfs::file _File(database_location::current().file());
+        ::mjfs::file _File(database_location::current().file(), ::mjfs::file_access::write);
         ::mjfs::file_stream _Stream(_File);
         if (_Stream.is_open()) {
             if (_File.resize(0)) { // must be empty
