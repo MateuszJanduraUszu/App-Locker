@@ -18,7 +18,7 @@ namespace applocker {
     void* _Database_modification_handler::_Create_thread(_Thread_cache* const _Cache) noexcept {
         return ::CreateThread(nullptr, 0,
             [](void* _Data) -> unsigned long {
-                _Thread_cache* _Local_cache          = static_cast<_Thread_cache*>(_Data);
+                _Thread_cache* const _Local_cache    = static_cast<_Thread_cache*>(_Data);
                 _Service_shared_cache& _Shared_cache = _Service_shared_cache::_Get();
                 directory_watcher _Watcher(_Local_cache->_Event);
                 if (!_Watcher.is_watching()) { // watcher inactive, break
@@ -165,7 +165,7 @@ namespace applocker {
 
                     for (const auto& _Proc : _Procs) {
                         for (const auto& _App : _Apps) {
-                            // Note: The _App.to_integer() returns the locked application checksum.
+                            // Note: The _App.to_integer() returns the locked application's module checksum.
                             if (_App.to_integer() == _Proc._Module_checksum) {
                                 _Process_traits::_Terminate(_Proc._Id);
                                 break;

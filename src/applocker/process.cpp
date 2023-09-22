@@ -12,7 +12,7 @@ namespace applocker {
     _Toolhelp_snapshot::_Toolhelp_snapshot() noexcept : _Handle(_Create()) {}
 
     _Toolhelp_snapshot::~_Toolhelp_snapshot() noexcept {
-        if (_Handle) {
+        if (_Valid()) {
             ::CloseHandle(_Handle);
             _Handle = nullptr;
         }
@@ -22,9 +22,13 @@ namespace applocker {
         return ::CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
     }
 
+    bool _Toolhelp_snapshot::_Valid() const noexcept {
+        return _Handle != nullptr && _Handle != INVALID_HANDLE_VALUE;
+    }
+
     _Process_traits::_Process_list _Process_traits::_Get_process_list() {
         _Toolhelp_snapshot _Snapshot;
-        if (!_Snapshot._Handle) {
+        if (!_Snapshot._Valid()) {
             return _Process_list{};
         }
 

@@ -18,6 +18,9 @@ namespace applocker {
         _Toolhelp_snapshot() noexcept;
         ~_Toolhelp_snapshot() noexcept;
 
+        // checks if the snapshot handle is valid
+        bool _Valid() const noexcept;
+
     private:
         // creates toolhelp snapshot
         [[nodiscard]] static void* _Create() noexcept;
