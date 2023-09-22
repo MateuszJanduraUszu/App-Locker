@@ -74,12 +74,12 @@ namespace mjfs {
         ~directory_iterator() noexcept;
 
         directory_iterator(const directory_iterator&) noexcept = default;
-        directory_iterator(directory_iterator&&) noexcept = default;
+        directory_iterator(directory_iterator&&) noexcept      = default;
 
         explicit directory_iterator(const path& _Target);
 
         directory_iterator& operator=(const directory_iterator&) noexcept = default;
-        directory_iterator& operator=(directory_iterator&&) noexcept = default;
+        directory_iterator& operator=(directory_iterator&&) noexcept      = default;
 
         // checks whether two iterators are equal
         bool operator==(const directory_iterator& _Other) const noexcept;
