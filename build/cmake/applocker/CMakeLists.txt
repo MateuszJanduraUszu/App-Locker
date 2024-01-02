@@ -5,7 +5,7 @@
 
 cmake_minimum_required(VERSION 3.21)
 project(applocker
-    VERSION 1.0.1
+    VERSION 1.0.3
     DESCRIPTION "App Locker Service"
     LANGUAGES CXX
 )
@@ -13,7 +13,13 @@ project(applocker
 set(CXX_STANDARD 17)
 set(CXX_STANDARD_REQUIRED ON)
 
-if(NOT(CMAKE_GENERATOR_PLATFORM STREQUAL x64 OR CMAKE_GENERATOR_PLATFORM STREQUAL Win32))
+# translate x64/Win32 into x64/x86
+if(CMAKE_GENERATOR_PLATFORM STREQUAL x64)
+    set(APPLOCKER_PLATFORM_ARCH x64)
+elseif(CMAKE_GENERATOR_PLATFORM STREQUAL Win32)
+    set(APPLOCKER_PLATFORM_ARCH x86)
+else()
+    set(APPLOCKER_PLATFORM_ARCH Invalid)
     message(FATAL_ERROR "Requires either x64 or Win32 platform architecture.")
 endif()
 
@@ -22,44 +28,65 @@ if(MSVC)
     set(VS_SOURCE_GROUPS src)
 endif()
 
-set(src_dir "${CMAKE_CURRENT_SOURCE_DIR}/../../../src")
-set(applocker_sources
-    "${src_dir}/applocker/directory_watcher.cpp"
-    "${src_dir}/applocker/directory_watcher.hpp"
-    "${src_dir}/applocker/event_sink.cpp"
-    "${src_dir}/applocker/event_sink.hpp"
-    "${src_dir}/applocker/main.cpp"
-    "${src_dir}/applocker/process.cpp"
-    "${src_dir}/applocker/process.hpp"
-    "${src_dir}/applocker/service.cpp"
-    "${src_dir}/applocker/service.hpp"
-    "${src_dir}/applocker/service_caches.cpp"
-    "${src_dir}/applocker/service_caches.hpp"
-    "${src_dir}/applocker/sync.cpp"
-    "${src_dir}/applocker/sync.hpp"
-    "${src_dir}/applocker/waitable_event.cpp"
-    "${src_dir}/applocker/waitable_event.hpp"
-    "${src_dir}/applocker/wmi.cpp"
-    "${src_dir}/applocker/wmi.hpp"
+set(APPLOCKER_SRC_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../../src")
+set(APPLOCKER_SOURCES
+    "${APPLOCKER_SRC_DIR}/applocker/directory_watcher.cpp"
+    "${APPLOCKER_SRC_DIR}/applocker/directory_watcher.hpp"
+    "${APPLOCKER_SRC_DIR}/applocker/event_sink.cpp"
+    "${APPLOCKER_SRC_DIR}/applocker/event_sink.hpp"
+    "${APPLOCKER_SRC_DIR}/applocker/main.cpp"
+    "${APPLOCKER_SRC_DIR}/applocker/process.cpp"
+    "${APPLOCKER_SRC_DIR}/applocker/process.hpp"
+    "${APPLOCKER_SRC_DIR}/applocker/service.cpp"
+    "${APPLOCKER_SRC_DIR}/applocker/service.hpp"
+    "${APPLOCKER_SRC_DIR}/applocker/service_caches.cpp"
+    "${APPLOCKER_SRC_DIR}/applocker/service_caches.hpp"
+    "${APPLOCKER_SRC_DIR}/applocker/sync.cpp"
+    "${APPLOCKER_SRC_DIR}/applocker/sync.hpp"
+    "${APPLOCKER_SRC_DIR}/applocker/wmi.cpp"
+    "${APPLOCKER_SRC_DIR}/applocker/wmi.hpp"
 )
-set(dbmgr_sources
-    "${src_dir}/dbmgr/checksum.cpp"
-    "${src_dir}/dbmgr/checksum.hpp"
-    "${src_dir}/dbmgr/database.cpp"
-    "${src_dir}/dbmgr/database.hpp"
+set(DBMGR_SOURCES
+    "${APPLOCKER_SRC_DIR}/dbmgr/checksum.cpp"
+    "${APPLOCKER_SRC_DIR}/dbmgr/checksum.hpp"
+    "${APPLOCKER_SRC_DIR}/dbmgr/database.cpp"
+    "${APPLOCKER_SRC_DIR}/dbmgr/database.hpp"
+    "${APPLOCKER_SRC_DIR}/dbmgr/tinywin.hpp"
 )
 
 # put all source files in "src" directory
-source_group("src" FILES ${applocker_sources} ${dbmgr_sources})
+source_group("src" FILES ${APPLOCKER_SOURCES} ${DBMGR_SOURCES})
 
 # put the compiled executable in either the "bin\Debug" or "bin\Release" directory
 set(CMAKE_RUNTIME_OUTPUT_DIRECTORY "${CMAKE_BINARY_DIR}/bin/${CMAKE_BUILD_TYPE}")
 
-add_executable(applocker
-    ${applocker_sources}
-    ${dbmgr_sources}
-)
+add_executable(applocker ${APPLOCKER_SOURCES} ${DBMGR_SOURCES})
 
 target_compile_features(applocker PRIVATE cxx_std_17)
-target_include_directories(applocker PRIVATE "${src_dir}")
-target_link_libraries(applocker PRIVATE wbemuuid.lib)
+target_include_directories(applocker PRIVATE
+    "${APPLOCKER_SRC_DIR}"
+    "${APPLOCKER_SRC_DIR}/thirdparty/MJFS/inc"
+    "${APPLOCKER_SRC_DIR}/thirdparty/MJMEM/inc"
+    "${APPLOCKER_SRC_DIR}/thirdparty/MJSTR/inc"
+    "${APPLOCKER_SRC_DIR}/thirdparty/MJSYNC/inc"
+)
+target_link_libraries(applocker PRIVATE
+    # link MJFS module
+    $<$<CONFIG:Debug>:${APPLOCKER_SRC_DIR}/thirdparty/MJFS/bin/${APPLOCKER_PLATFORM_ARCH}/Debug/mjfs.lib>
+    $<$<CONFIG:Release>:${APPLOCKER_SRC_DIR}/thirdparty/MJFS/bin/${APPLOCKER_PLATFORM_ARCH}/Release/mjfs.lib>
+
+    # link MJMEM module
+    $<$<CONFIG:Debug>:${APPLOCKER_SRC_DIR}/thirdparty/MJMEM/bin/${APPLOCKER_PLATFORM_ARCH}/Debug/mjmem.lib>
+    $<$<CONFIG:Release>:${APPLOCKER_SRC_DIR}/thirdparty/MJMEM/bin/${APPLOCKER_PLATFORM_ARCH}/Release/mjmem.lib>
+
+    # link MJSTR module
+    $<$<CONFIG:Debug>:${APPLOCKER_SRC_DIR}/thirdparty/MJSTR/bin/${APPLOCKER_PLATFORM_ARCH}/Debug/mjstr.lib>
+    $<$<CONFIG:Release>:${APPLOCKER_SRC_DIR}/thirdparty/MJSTR/bin/${APPLOCKER_PLATFORM_ARCH}/Release/mjstr.lib>
+
+    # link MJSYNC module
+    $<$<CONFIG:Debug>:${APPLOCKER_SRC_DIR}/thirdparty/MJSYNC/bin/${APPLOCKER_PLATFORM_ARCH}/Debug/mjsync.lib>
+    $<$<CONFIG:Release>:${APPLOCKER_SRC_DIR}/thirdparty/MJSYNC/bin/${APPLOCKER_PLATFORM_ARCH}/Release/mjsync.lib>
+
+    # link WMI library
+    wbemuuid.lib
+)
