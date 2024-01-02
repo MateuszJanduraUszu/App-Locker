@@ -9,7 +9,7 @@
 #include <applocker/event_sink.hpp>
 #include <WbemCli.h>
 
-namespace applocker {
+namespace mjx {
     class _Com_instance {
     public:
         _Com_instance() noexcept;
@@ -25,8 +25,8 @@ namespace applocker {
         // initializes COM security
         static bool _Init_security() noexcept;
 
-        bool _Myinst : 4; // true if the COM instance is initialized
-        bool _Mysec  : 4; // true if the COM security is initialized
+        bool _Myinst; // true if the COM instance is initialized
+        bool _Mysec; // true if the COM security is initialized
     };
 
     template <class _Ty>
@@ -49,6 +49,10 @@ namespace applocker {
         }
 
         _Com_ptr& operator=(_Ty* const _New_ptr) noexcept {
+            if (_Myptr) {
+                _Myptr->Release();
+            }
+
             _Myptr = _New_ptr;
             return *this;
         }
@@ -105,7 +109,7 @@ namespace applocker {
         ~_Wmi_session() noexcept;
 
         // connects to the WMI
-        [[nodiscard]] bool _Connect() noexcept;
+        [[nodiscard]] bool _Connect();
 
         // terminates the WMI session
         void _Terminate() noexcept;
@@ -121,11 +125,11 @@ namespace applocker {
         bool _Set_proxy_security() noexcept;
 
         // configures the way the events are received
-        bool _Configure_event_reception() noexcept;
+        bool _Configure_event_reception();
 
         // sends notification query to WMI
         bool _Send_notification_query() noexcept;
     };
-} // namespace applocker
+} // namespace mjx
 
 #endif // _APPLOCKER_WMI_HPP_

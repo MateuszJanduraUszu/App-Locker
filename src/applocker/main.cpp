@@ -8,7 +8,7 @@
 int main() {
     constexpr SERVICE_TABLE_ENTRYW _Table[] = {
         {const_cast<wchar_t*>(
-            ::applocker::service_launcher::service_name), &::applocker::service_entry},
+            ::mjx::service_launcher::service_name), &::mjx::service_entry},
         {nullptr, nullptr} // null-entry (required)
     };
     return ::StartServiceCtrlDispatcherW(_Table) != 0 ? 0 : -1;

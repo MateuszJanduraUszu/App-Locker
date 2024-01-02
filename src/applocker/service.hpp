@@ -7,8 +7,9 @@
 #ifndef _APPLOCKER_SERVICE_HPP_
 #define _APPLOCKER_SERVICE_HPP_
 #include <applocker/service_caches.hpp>
+#include <applocker/sync.hpp>
 
-namespace applocker {
+namespace mjx {
     class _Database_modification_handler { // handles database modification at runtime
     public:
         _Database_modification_handler() noexcept;
@@ -20,7 +21,7 @@ namespace applocker {
     private:
         struct _Thread_cache {
             waitable_event _Event;
-            sync_flag _Flag;
+            _Sync_flag _Flag;
         };
 
         // creates database modification handler thread
@@ -41,7 +42,7 @@ namespace applocker {
         bool is_launch_possible() const noexcept;
         
         // launches the service
-        void launch() noexcept;
+        void launch();
 
     private:
         // handles the service control signals
@@ -58,12 +59,12 @@ namespace applocker {
         void _Set_state(const unsigned long _New_state) noexcept;
         
         // performs the service task
-        void _Perform_task() noexcept;
+        void _Perform_task();
 
         _Service_cache _Mycache;
     };
 
-    void __stdcall service_entry(unsigned long, wchar_t**) noexcept;
-} // namespace applocker
+    void __stdcall service_entry(unsigned long, wchar_t**);
+} // namespace mjx
 
 #endif // _APPLOCKER_SERVICE_HPP_

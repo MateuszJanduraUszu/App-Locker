@@ -8,12 +8,13 @@
 #define _APPLOCKER_SERVICE_CACHES_HPP_
 #include <applocker/process.hpp>
 #include <applocker/sync.hpp>
-#include <applocker/waitable_event.hpp>
 #include <dbmgr/database.hpp>
+#include <dbmgr/tinywin.hpp>
+#include <mjsync/waitable_event.hpp>
 #include <vector>
-#include <Windows.h>
+#include <winsvc.h>
 
-namespace applocker {
+namespace mjx {
     enum class _Service_state : unsigned char {
         _Terminated,
         _Waiting,
@@ -42,8 +43,8 @@ namespace applocker {
 
     class _Service_shared_cache { // service's shared cache
     public:
-        locked_resource<::std::vector<::dbmgr::database_entry>> _Locked_apps;
-        locked_resource<_Process_list> _New_procs;
+        _Locked_resource<::std::vector<database_entry>> _Locked_apps;
+        _Locked_resource<_Process_list> _New_procs;
         waitable_event _Task_event;
 
         ~_Service_shared_cache() noexcept;
@@ -54,6 +55,6 @@ namespace applocker {
     private:
         _Service_shared_cache();
     };
-} // namespace applocker
+} // namespace mjx
 
 #endif // _APPLOCKER_SERVICE_CACHES_HPP_

@@ -6,9 +6,9 @@
 #include <applocker/service_caches.hpp>
 #include <applocker/wmi.hpp>
 #include <combaseapi.h>
-#include <new>
+#include <mjmem/object_allocator.hpp>
 
-namespace applocker {
+namespace mjx {
     _Com_instance::_Com_instance() noexcept
         : _Myinst(_Init()), _Mysec(_Myinst ? _Init_security() : false) {}
 
@@ -54,18 +54,14 @@ namespace applocker {
             RPC_C_AUTHN_LEVEL_CALL, RPC_C_IMP_LEVEL_IMPERSONATE, nullptr, EOAC_NONE) == S_OK;
     }
 
-    bool _Wmi_session::_Configure_event_reception() noexcept {
+    bool _Wmi_session::_Configure_event_reception() {
         _Apartment = _Create_instance<IUnsecuredApartment>(
             ::CLSID_UnsecuredApartment, CLSCTX_LOCAL_SERVER, ::IID_IUnsecuredApartment);
         if (!_Apartment._Valid()) {
             return false;
         }
 
-        _Sink = new (::std::nothrow) _Event_sink(_Service_shared_cache::_Get()._Task_event);
-        if (!_Sink._Valid()) {
-            return false;
-        }
-
+        _Sink = ::mjx::create_object<_Event_sink>(_Service_shared_cache::_Get()._Task_event);
         if (_Apartment->CreateObjectStub(_Sink._Get(), _Stub._Address()) < 0) {
             return false;
         }
@@ -81,7 +77,7 @@ namespace applocker {
             nullptr, _Stub_sink._Get()) >= 0;
     }
 
-    [[nodiscard]] bool _Wmi_session::_Connect() noexcept {
+    [[nodiscard]] bool _Wmi_session::_Connect() {
         if (!_Inst._Valid()) {
             return false;
         }
@@ -93,4 +89,4 @@ namespace applocker {
     void _Wmi_session::_Terminate() noexcept {
         _Services->CancelAsyncCall(_Stub_sink._Get());
     }
-} // namespace applocker
+} // namespace mjx

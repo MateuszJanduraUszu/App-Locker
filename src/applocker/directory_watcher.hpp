@@ -6,11 +6,11 @@
 #pragma once
 #ifndef _APPLOCKER_DIRECTORY_WATCHER_HPP_
 #define _APPLOCKER_DIRECTORY_WATCHER_HPP_
-#include <applocker/waitable_event.hpp>
-#include <dbmgr/database.hpp>
-#include <Windows.h>
+#include <dbmgr/tinywin.hpp>
+#include <mjstr/char_traits.hpp>
+#include <mjsync/waitable_event.hpp>
 
-namespace applocker {
+namespace mjx {
     template <class _Elem, size_t _Size>
     constexpr size_t _Str_size(const _Elem(&)[_Size]) noexcept {
         return _Size;
@@ -64,10 +64,10 @@ namespace applocker {
         static bool _Should_notify(FILE_NOTIFY_INFORMATION* const _Info) noexcept;
 
         void* _Mydir;
-        unsigned char _Mybuf[_Max_buffer_size];
+        byte_t _Mybuf[_Max_buffer_size];
         _Notification_events _Myevents;
         OVERLAPPED _Myovl;
     };
-} // namespace applocker
+} // namespace mjx
 
 #endif // _APPLOCKER_DIRECTORY_WATCHER_HPP_

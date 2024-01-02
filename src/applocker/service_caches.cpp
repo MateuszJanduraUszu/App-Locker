@@ -5,7 +5,7 @@
 
 #include <applocker/service_caches.hpp>
 
-namespace applocker {
+namespace mjx {
     _Service_cache::_Service_cache() noexcept
         : _Handle(nullptr), _Status(), _State_event(), _State(_Service_state::_Working) {}
 
@@ -29,7 +29,7 @@ namespace applocker {
         //       This is because some locked processes may still be running. At this stage, _New_procs
         //       doesn't yet contain any processes, so the task thread will scan existing processes to
         //       identify any that need further attention.
-        _Locked_apps.assign(::dbmgr::database::current().get_entries());
+        _Locked_apps._Assign(database::current().get_entries());
         _Task_event.notify();
     }
 
@@ -39,4 +39,4 @@ namespace applocker {
         static _Service_shared_cache _Cache;
         return _Cache;
     }
-} // namespace applocker
+} // namespace mjx

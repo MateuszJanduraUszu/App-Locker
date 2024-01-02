@@ -10,7 +10,7 @@
 #include <dbmgr/checksum.hpp>
 #include <vector>
 
-namespace applocker {
+namespace mjx {
     class _Toolhelp_snapshot {
     public:
         void* _Handle;
@@ -29,7 +29,7 @@ namespace applocker {
     struct _Process_traits {
         struct _Basic_data {
             uint32_t _Id; // process ID (PID)
-            ::dbmgr::checksum_t _Module_checksum; // process image file checksum
+            checksum_t _Module_checksum; // process image file checksum
         };
 
         using _Process_list = ::std::vector<_Basic_data>;
@@ -42,6 +42,6 @@ namespace applocker {
     };
 
     using _Process_list = _Process_traits::_Process_list;
-} // namespace applocker
+} // namespace mjx
 
 #endif // _APPLOCKER_PROCESS_HPP_

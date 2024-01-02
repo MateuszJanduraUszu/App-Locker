@@ -7,11 +7,11 @@
 #ifndef _APPLOCKER_EVENT_SINK_HPP_
 #define _APPLOCKER_EVENT_SINK_HPP_
 #include <applocker/process.hpp>
-#include <applocker/waitable_event.hpp>
 #include <guiddef.h>
+#include <mjsync/waitable_event.hpp>
 #include <WbemIdl.h>
 
-namespace applocker {
+namespace mjx {
     class _Variant {
     public:
         _Variant() noexcept;
@@ -24,7 +24,7 @@ namespace applocker {
         const VARIANT* _Get() const noexcept;
 
     private:
-        VARIANT _Mystorage;
+        VARIANT _Mystg;
     };
 
     class _Event_sink : public IWbemObjectSink {
@@ -59,11 +59,11 @@ namespace applocker {
         static uint32_t _Get_process_id(IWbemClassObject* const _Inst) noexcept;
 
         // obtains the process module checksum from the target instance
-        static ::dbmgr::checksum_t _Get_process_module_checksum(IWbemClassObject* const _Inst) noexcept;
+        static checksum_t _Get_process_module_checksum(IWbemClassObject* const _Inst) noexcept;
 
         _Ref_t _Myrefs;
         waitable_event& _Myevent;
     };
-} // namespace applocker
+} // namespace mjx
 
 #endif // _APPLOCKER_EVENT_SINK_HPP_

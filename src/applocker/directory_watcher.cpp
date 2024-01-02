@@ -5,10 +5,11 @@
 
 #include <applocker/directory_watcher.hpp>
 #include <cwchar>
+#include <dbmgr/database.hpp>
 
-namespace applocker {
+namespace mjx {
     directory_watcher::directory_watcher(waitable_event& _Event) noexcept
-        : _Mydir(_Open_watched_directory()), _Mybuf(), _Myevents(_Event), _Myovl() {
+        : _Mydir(_Open_watched_directory()), _Mybuf{0}, _Myevents(_Event), _Myovl() {
         if (is_watching()) {
             _Myovl.hEvent = _Myevents._Dir_event.native_handle();
         }
@@ -25,7 +26,7 @@ namespace applocker {
         : _Thread_event(_Event), _Dir_event() {}
 
     [[nodiscard]] void* directory_watcher::_Open_watched_directory() noexcept {
-        return ::CreateFileW(::dbmgr::database_location::current().directory().c_str(),
+        return ::CreateFileW(database_location::current().directory().c_str(),
             GENERIC_READ, FILE_SHARE_READ | FILE_SHARE_WRITE | FILE_SHARE_DELETE, nullptr,
                 OPEN_EXISTING, FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED, nullptr);
     }
@@ -52,20 +53,18 @@ namespace applocker {
             _Myevents._Dir_event.native_handle(), _Myevents._Thread_event.native_handle()};
         unsigned long _Bytes; // returned bytes (unused)
         if (::ReadDirectoryChangesW(_Mydir, _Mybuf, _Max_buffer_size, false,
-            FILE_NOTIFY_CHANGE_LAST_WRITE, &_Bytes, ::std::addressof(_Myovl), nullptr) == 0) {
+            FILE_NOTIFY_CHANGE_LAST_WRITE, &_Bytes, &_Myovl, nullptr) == 0) {
             return error;
         }
 
         switch (::WaitForMultipleObjects(2, _Events, false, 0xFFFF'FFFF)) {
         case 0: // notified by directory's event (WAIT_OBJECT_0)
-            break;
+            return _Should_notify(
+                reinterpret_cast<FILE_NOTIFY_INFORMATION*>(_Mybuf)) ? update_required : continue_wait;
         case 1: // notified by thread's event (WAIT_OBJECT_0 + 1)
             return stop_watching;
         default: // error occured
             return error;
         };
-
-        return _Should_notify(
-            reinterpret_cast<FILE_NOTIFY_INFORMATION*>(_Mybuf)) ? update_required : continue_wait;
     }
-} // namespace applocker
+} // namespace mjx
