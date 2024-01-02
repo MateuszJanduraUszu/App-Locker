@@ -6,13 +6,14 @@
 #pragma once
 #ifndef _DBMGR_TASK_HPP_
 #define _DBMGR_TASK_HPP_
-#include <string_view>
+#include <mjmem/smart_pointer.hpp>
+#include <mjstr/string_view.hpp>
 #include <vector>
 
-namespace dbmgr {
+namespace mjx {
     class __declspec(novtable) task { // base class for all tasks
     public:
-        virtual bool execute() noexcept            = 0;
+        virtual bool execute()                     = 0;
         virtual const char* error() const noexcept = 0;
     };
 
@@ -22,7 +23,7 @@ namespace dbmgr {
         ~help() noexcept;
 
         // shows the application usage
-        bool execute() noexcept override;
+        bool execute() override;
 
         // returns an error (never occurs)
         const char* error() const noexcept override;
@@ -30,33 +31,33 @@ namespace dbmgr {
 
     class lock : public task {
     public:
-        explicit lock(const ::std::wstring_view _Target) noexcept;
+        explicit lock(const unicode_string_view _Target) noexcept;
         ~lock() noexcept;
 
         // locks the specified application
-        bool execute() noexcept override;
+        bool execute() override;
 
         // returns an error
         const char* error() const noexcept override;
 
     private:
-        const ::std::wstring_view _Mytarget;
+        unicode_string_view _Mytarget;
         const char* _Myerror;
     };
 
     class unlock : public task {
     public:
-        explicit unlock(const ::std::wstring_view _Target) noexcept;
+        explicit unlock(const unicode_string_view _Target) noexcept;
         ~unlock() noexcept;
 
         // unlocks the specified application
-        bool execute() noexcept override;
+        bool execute() override;
         
         // returns an error
         const char* error() const noexcept override;
 
     private:
-        const ::std::wstring_view _Mytarget;
+        unicode_string_view _Mytarget;
         const char* _Myerror;
     };
 
@@ -66,7 +67,7 @@ namespace dbmgr {
         ~unlock_all() noexcept;
 
         // unlocks all locked applications
-        bool execute() noexcept override;
+        bool execute() override;
 
         // returns an error
         const char* error() const noexcept override;
@@ -74,20 +75,20 @@ namespace dbmgr {
 
     class status : public task {
     public:
-        explicit status(const ::std::wstring_view _Target) noexcept;
+        explicit status(const unicode_string_view _Target) noexcept;
         ~status() noexcept;
 
         // checks if the specified application is locked
-        bool execute() noexcept override;
+        bool execute() override;
         
         // returns an error (never occurs)
         const char* error() const noexcept override;
 
     private:
-        const ::std::wstring_view _Mytarget;
+        unicode_string_view _Mytarget;
     };
 
-    [[nodiscard]] task* make_task(const wchar_t* const _Arg) noexcept;
+    [[nodiscard]] task* make_task(const wchar_t* const _Arg);
 
     class task_executor { // manages task lifetime and execution
     public:
@@ -98,16 +99,13 @@ namespace dbmgr {
         void bind_task(task* const _Task) noexcept;
         
         // executes the binded task
-        bool execute() noexcept;
+        bool execute();
 
         // returns an error
         const char* error() const noexcept;
 
     private:
-        // releases the binded task
-        void _Release_task() noexcept;
-
-        task* _Mytask;
+        unique_smart_ptr<task> _Mytask;
     };
 
     class task_queue {
@@ -122,7 +120,7 @@ namespace dbmgr {
         void push(task* const _Task);
         
         // executes all tasks stored in the queue
-        bool execute() noexcept;
+        bool execute();
 
         // returns an error
         const char* error() const noexcept;
@@ -137,6 +135,6 @@ namespace dbmgr {
         ::std::vector<task*> _Mytasks;
         const char* _Myerror;
     };
-} // namespace dbmgr
+} // namespace mjx
 
 #endif // _DBMGR_TASK_HPP_

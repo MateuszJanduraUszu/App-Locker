@@ -6,14 +6,14 @@
 #include <cstdio>
 #include <dbmgr/task.hpp>
 #include <dbmgr/database.hpp>
-#include <new>
+#include <mjmem/object_allocator.hpp>
 
-namespace dbmgr {
+namespace mjx {
     help::help() noexcept {}
 
     help::~help() noexcept {}
 
-    bool help::execute() noexcept {
+    bool help::execute() {
         ::puts(
             "Usage:\n"
             "    --lock=name - Locks an application.\n"
@@ -28,11 +28,11 @@ namespace dbmgr {
         return nullptr; // error never occurs
     }
 
-    lock::lock(const ::std::wstring_view _Target) noexcept : _Mytarget(_Target), _Myerror(nullptr) {}
+    lock::lock(const unicode_string_view _Target) noexcept : _Mytarget(_Target), _Myerror(nullptr) {}
 
     lock::~lock() noexcept {}
 
-    bool lock::execute() noexcept {
+    bool lock::execute() {
         database& _Db = database::current();
         if (_Db.has_entry(_Mytarget)) {
             _Myerror = "The application is already locked.";
@@ -51,11 +51,11 @@ namespace dbmgr {
         return _Myerror;
     }
 
-    unlock::unlock(const ::std::wstring_view _Target) noexcept : _Mytarget(_Target), _Myerror(nullptr) {}
+    unlock::unlock(const unicode_string_view _Target) noexcept : _Mytarget(_Target), _Myerror(nullptr) {}
 
     unlock::~unlock() noexcept {}
 
-    bool unlock::execute() noexcept {
+    bool unlock::execute() {
         database& _Db = database::current();
         if (!_Db.has_entry(_Mytarget)) {
             _Myerror = "The application is not locked.";
@@ -78,7 +78,7 @@ namespace dbmgr {
 
     unlock_all::~unlock_all() noexcept {}
 
-    bool unlock_all::execute() noexcept {
+    bool unlock_all::execute() {
         database::current().clear();
         return true;
     }
@@ -87,11 +87,11 @@ namespace dbmgr {
         return nullptr; // error never occurs
     }
 
-    status::status(const ::std::wstring_view _Target) noexcept : _Mytarget(_Target) {}
+    status::status(const unicode_string_view _Target) noexcept : _Mytarget(_Target) {}
 
     status::~status() noexcept {}
 
-    bool status::execute() noexcept {
+    bool status::execute() {
         if (database::current().has_entry(_Mytarget)) {
             ::puts("[STATUS]: The application is locked.");
         } else {
@@ -105,30 +105,29 @@ namespace dbmgr {
         return nullptr; // error never occurs
     }
 
-    [[nodiscard]] task* make_task(const wchar_t* const _Arg) noexcept {
-        const ::std::wstring_view _As_view(_Arg);
+    [[nodiscard]] task* make_task(const wchar_t* const _Arg) {
+        const unicode_string_view _As_view(_Arg);
         const size_t _Eq_pos = _As_view.find(L'=');
-        if (_Eq_pos != ::std::wstring_view::npos) { // command with target
+        if (_Eq_pos != unicode_string_view::npos) { // command with target
             if (_Eq_pos == _As_view.size() - 1) { // no target provided
                 return nullptr;
             }
 
-            const ::std::wstring_view _Target  = _Arg + _Eq_pos + 1;
-            static constexpr size_t _Not_found = ::std::wstring_view::npos;
-            if (_As_view.find(L"--lock") != _Not_found) {
-                return new (::std::nothrow) lock(_Target);
-            } else if (_As_view.find(L"--unlock") != _Not_found) {
-                return new (::std::nothrow) unlock(_Target);
-            } else if (_As_view.find(L"--status") != _Not_found) {
-                return new (::std::nothrow) status(_Target);
+            const unicode_string_view _Target = _Arg + _Eq_pos + 1;
+            if (_As_view.contains(L"--lock")) {
+                return ::mjx::create_object<lock>(_Target);
+            } else if (_As_view.contains(L"--unlock")) {
+                return ::mjx::create_object<unlock>(_Target);
+            } else if (_As_view.contains(L"--status")) {
+                return ::mjx::create_object<status>(_Target);
             } else { // unknown command
                 return nullptr;
             }
         } else { // generic command
             if (_As_view == L"--help") {
-                return new (::std::nothrow) help();
+                return ::mjx::create_object<help>();
             } else if (_As_view == L"--unlock-all") {
-                return new (::std::nothrow) unlock_all();
+                return ::mjx::create_object<unlock_all>();
             } else { // unknown command
                 return nullptr;
             }
@@ -137,23 +136,13 @@ namespace dbmgr {
 
     task_executor::task_executor() noexcept : _Mytask(nullptr) {}
 
-    task_executor::~task_executor() noexcept {
-        _Release_task();
-    }
-
-    void task_executor::_Release_task() noexcept {
-        if (_Mytask) {
-            delete _Mytask;
-            _Mytask = nullptr;
-        }
-    }
+    task_executor::~task_executor() noexcept {}
 
     void task_executor::bind_task(task* const _Task) noexcept {
-        _Release_task();
-        _Mytask = _Task;
+        _Mytask.reset(_Task);
     }
 
-    bool task_executor::execute() noexcept {
+    bool task_executor::execute() {
         return _Mytask ? _Mytask->execute() : false;
     }
 
@@ -169,7 +158,7 @@ namespace dbmgr {
 
     void task_queue::_Clear() noexcept {
         for (task*& _Task : _Mytasks) {
-            delete _Task;
+            ::mjx::delete_object(_Task);
             _Task = nullptr;
         }
 
@@ -177,16 +166,16 @@ namespace dbmgr {
     }
 
     [[nodiscard]] task* task_queue::_Pop() noexcept {
-        task* const _Result = _Mytasks.front();
+        task* const _Task = _Mytasks.front();
         _Mytasks.erase(_Mytasks.begin());
-        return _Result;
+        return _Task;
     }
 
     void task_queue::push(task* const _Task) {
         _Mytasks.push_back(_Task);
     }
 
-    bool task_queue::execute() noexcept {
+    bool task_queue::execute() {
         task_executor _Executor;
         while (!_Mytasks.empty()) {
             _Executor.bind_task(_Pop());
@@ -202,4 +191,4 @@ namespace dbmgr {
     const char* task_queue::error() const noexcept {
         return _Myerror;
     }
-} // namespace dbmgr
+} // namespace mjx

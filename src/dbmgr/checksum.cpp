@@ -4,31 +4,30 @@
 // SPDX-License-Identifier: Apache-2.0
 
 #include <dbmgr/checksum.hpp>
-#include <Windows.h>
-#include <nmmintrin.h>
+#include <dbmgr/tinywin.hpp>
+#include <nmmintrin.h> // include after <Windows.h>
 
-namespace dbmgr {
+namespace mjx {
     bool _Crc32c_traits::_Use_sse42() noexcept {
         return ::IsProcessorFeaturePresent(PF_SSE4_2_INSTRUCTIONS_AVAILABLE) != 0;
     }
 
     checksum_t _Crc32c_traits::_Compute_sse42(const void* _First, const void* const _Last) noexcept {
-        const unsigned char* _Bytes_first      = static_cast<const unsigned char*>(_First);
-        const unsigned char* const _Bytes_last = static_cast<const unsigned char*>(_Last);
-        checksum_t _Result                     = 0xFFFF'FFFF;
-        while (_Bytes_first != _Bytes_last) {
-            _Result = ::_mm_crc32_u8(_Result, *_Bytes_first);
-            ++_Bytes_first;
+        const byte_t* _BFirst      = static_cast<const byte_t*>(_First);
+        const byte_t* const _BLast = static_cast<const byte_t*>(_Last);
+        checksum_t _Val            = 0xFFFF'FFFF;
+        for (; _BFirst != _BLast; ++_BFirst) {
+            _Val = ::_mm_crc32_u8(_Val, *_BFirst);
         }
 
-        return _Result ^ 0xFFFF'FFFF;
+        return _Val ^ 0xFFFF'FFFF;
     }
 
-    checksum_t _Crc32c_traits::_Compute_normal(const void* _First, const void* const _Last) noexcept {
-        const unsigned char* _Bytes_first      = static_cast<const unsigned char*>(_First);
-        const unsigned char* const _Bytes_last = static_cast<const unsigned char*>(_Last);
-        checksum_t _Result                     = 0xFFFF'FFFF;
-        static constexpr uint32_t _Table[256]  = { // CRC-32C lookup table
+    checksum_t _Crc32c_traits::_Compute_software(const void* _First, const void* const _Last) noexcept {
+        const byte_t* _BFirst                 = static_cast<const byte_t*>(_First);
+        const byte_t* const _BLast            = static_cast<const byte_t*>(_Last);
+        checksum_t _Val                       = 0xFFFF'FFFF;
+        static constexpr uint32_t _Table[256] = { // CRC-32C lookup table
             0x00000000, 0xF26B8303, 0xE13B70F7, 0x1350F3F4, 0xC79A971F, 0x35F1141C,
             0x26A1E7E8, 0xD4CA64EB, 0x8AD958CF, 0x78B2DBCC, 0x6BE22838, 0x9989AB3B,
             0x4D43CFD0, 0xBF284CD3, 0xAC78BF27, 0x5E133C24, 0x105EC76F, 0xE235446C,
@@ -73,19 +72,18 @@ namespace dbmgr {
             0xD5CF889D, 0x27A40B9E, 0x79B737BA, 0x8BDCB4B9, 0x988C474D, 0x6AE7C44E,
             0xBE2DA0A5, 0x4C4623A6, 0x5F16D052, 0xAD7D5351
         };
-        while (_Bytes_first != _Bytes_last) {
-            _Result = _Table[(_Result ^ *_Bytes_first) & 0xFF] ^ (_Result >> 8);
-            ++_Bytes_first;
+        for (; _BFirst != _BLast; ++_BFirst) {
+            _Val = _Table[(_Val ^ *_BFirst) & 0xFF] ^ (_Val >> 8);
         }
 
-        return _Result ^ 0xFFFF'FFFF;
+        return _Val ^ 0xFFFF'FFFF;
     }
 
-    checksum_t compute_checksum(const ::std::wstring_view _Str) noexcept {
-        if (_Crc32c_traits::_Use_sse42()) {
+    checksum_t compute_checksum(const unicode_string_view _Str) noexcept {
+        if (_Crc32c_traits::_Use_sse42()) { // use SIMD-based solution
             return _Crc32c_traits::_Compute_sse42(_Str.data(), _Str.data() + _Str.size());
-        } else {
-            return _Crc32c_traits::_Compute_normal(_Str.data(), _Str.data() + _Str.size());
+        } else { // use software-based solution
+            return _Crc32c_traits::_Compute_software(_Str.data(), _Str.data() + _Str.size());
         }
     }
-} // namespace dbmgr
+} // namespace mjx
